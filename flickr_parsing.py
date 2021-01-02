@@ -471,6 +471,11 @@ class FlickrParser():
                     invalid_date += 1
                 elif meta.date_taken() >= meta.date_uploaded():
                     wrong_taken_date += 1
+                else:
+                    if meta.date_taken().year == 2013:
+                        print(meta.get_path())
+                        print(meta.metadata)
+                        import pdb; pdb.set_trace()
                 
                 if meta.date_taken() != None and meta.date_taken().year >= 2015:
                     after_2015 += 1
