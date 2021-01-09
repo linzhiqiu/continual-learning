@@ -156,7 +156,7 @@ class TagParser():
         tag_and_scores = [tag_and_score(i) for i in all_meta_with_tag_t]
         cols = [imgs, ids, conf_score, date_taken, date_uploaded, sizes, aspect_ratios, titles, tag_and_scores, user_tags, machine_tags, description]
         
-        headers = [f'Image with tag {t}', 'YFCC ID', 'confidence score', 'date taken', 'date uploaded', 'size (w x h)', 'aspect ratio', 'title', 'SVM tags' 'user tags', 'machine tags', 'description']
+        headers = [f'Image with tag {t}', 'YFCC ID', 'confidence score', 'date taken', 'date uploaded', 'size (w x h)', 'aspect ratio', 'title', 'SVM tags', 'user tags', 'machine tags', 'description']
         make_table_html(headers,
                         cols,
                         summary_row=summary_row,
@@ -276,6 +276,7 @@ class TagParser():
         # self.index_page = os.path.join(self.all_img_folder, f"index_{folder_name}.html")
         self.index_page = os.path.join(self.all_img_folder, f"index_{folder_name}.html")
 
+        
         tag_main_page = os.path.join(self.index_folder, "tags.html")
         tag_main_page_description = "All valid images in each SVM tag groups (date taken < date uploaded) "
 
@@ -288,6 +289,9 @@ class TagParser():
         dynamic_tags_page = os.path.join(self.index_folder, "dynamic_tags.html")
         dynamic_tags_page_description = f"All valid images in each SVM tag groups with confidence > {threshold:.3f}"
         
+        user_tags_page = os.path.join(self.index_folder, "user_tags.html")
+        user_tags_page_description = f"All valid images in each user tag groups"
+        
         if not os.path.exists(self.index_folder):
             os.makedirs(self.index_folder)
         
@@ -296,9 +300,14 @@ class TagParser():
 
         dynamic_tag_pages = []
         dynamic_tag_descriptions = []
+
+        user_tag_pages = []
+        user_tag_descriptions = []
+        all_valid_meta_list = [] 
         
         all_invalid_date_meta = []
         all_weird_aspect_ratio_meta = []
+
         
         all_svm_tags_keys = sorted(list(self.all_svm_tags.keys()), key=lambda x: sum([len(self.all_svm_tags[x][s]) for s in SCORE_BUCKET]))
         for t in tqdm(all_svm_tags_keys):
@@ -318,6 +327,8 @@ class TagParser():
             for meta in all_meta_with_tag_t:
                 if self.is_weird_aspect_ratio_meta(meta):
                     all_weird_aspect_ratio_meta.append(meta)
+                else:
+                    all_valid_meta_list.append(meta)
 
             # continue # TODO:remove
             n_meta = len(all_meta_with_tag_t)
@@ -360,10 +371,12 @@ class TagParser():
                 )
             # score_str = " ".join([f" >{i}({len(all_svm_tags[t][i]):6d})" for i in SCORE_BUCKET])
             
-        
+        all_valid_meta_list
+
         #TODO: Comment back
         make_index_html(tag_pages, tag_descriptions, href=tag_main_page)
         make_index_html(dynamic_tag_pages, dynamic_tag_descriptions, href=dynamic_tags_page)
+        make_index_html(user_tag_pages, user_tag_descriptions, href=user_tags_page)
 
         self.prepare_img_table_without_tag(
             all_weird_aspect_ratio_meta,
@@ -390,9 +403,9 @@ class TagParser():
         )
 
         # return #TODO: remove
-        index_pages = [tag_main_page, invalid_main_page, weird_aspect_ratio_page, dynamic_tags_page]
+        index_pages = [tag_main_page, invalid_main_page, weird_aspect_ratio_page, dynamic_tags_page, user_tag_page]
         index_pages = [os.path.relpath(p, start=self.all_img_folder) for p in index_pages]
-        index_pages_descriptions = [tag_main_page_description, invalid_main_page_description, weird_aspect_ratio_page_description, dynamic_tags_page_description]
+        index_pages_descriptions = [tag_main_page_description, invalid_main_page_description, weird_aspect_ratio_page_description, dynamic_tags_page_description, user_tag_description]
         make_index_html(index_pages,
                         index_pages_descriptions,
                         href=self.index_page)

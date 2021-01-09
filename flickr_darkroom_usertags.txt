@@ -682,7 +682,6 @@ cellar
 cello
 cellphone
 cement
-
 cemetery
 centennial
 center
@@ -1338,7 +1337,8 @@ emperor
 far
 empire
 farewell
-empire+state+buildingfarm
+empire+state+building
+farm
 empty
 farmer
 emu
