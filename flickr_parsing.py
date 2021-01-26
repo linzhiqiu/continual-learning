@@ -140,6 +140,7 @@ class MetadataObject():
         HASH_VALUE (str):  Hash value
         EXIF (str) : EXIF
         IMG_PATH (str): Image path
+        IMG_DIR (str): Image folder (default: None)
     """
     ID : str
     USER_ID : str
@@ -169,6 +170,7 @@ class MetadataObject():
     HASH_VALUE : str
     EXIF : str
     IMG_PATH : str
+    IMG_DIR : str = None
 
 
 class Metadata(object):
@@ -184,7 +186,10 @@ class Metadata(object):
         return self.metadata.IMG_OR_VIDEO == 0
     
     def get_path(self):
-        return self.metadata.IMG_PATH
+        if self.metadata.IMG_DIR == None:
+            return self.metadata.IMG_PATH
+        else:
+            return os.path.join(self.metadata.IMG_DIR, self.metadata.IMG_PATH)
 
     def has_exif(self):
         return self.metadata.EXIF != None
@@ -237,6 +242,8 @@ class Metadata(object):
         
         hash_value = hash_dict[metadict['ID']]
         # import pdb; pdb.set_trace()
+        img_dir = os.path.abspath(save_folder)
+        img_path = f"{metadict['ID']}.{metadict['EXT']}"
 
         metadata = MetadataObject(
             ID = metadict['ID'],
@@ -266,7 +273,8 @@ class Metadata(object):
             LINE_NUM = line_number,
             HASH_VALUE = hash_value,
             EXIF = exif_number,
-            IMG_PATH = os.path.abspath(os.path.join(save_folder, f"{metadict['ID']}.{metadict['EXT']}")),
+            IMG_PATH = img_path,
+            IMG_DIR = img_dir,
         )
         return metadata
         
@@ -298,8 +306,8 @@ class Criteria():
     def get_save_folder(self):
         return self.save_folder
     
-    def make_metadata(self, data_line, auto_line, line_num, hash_dict, exif_line, save_folder):
-        return Metadata(data_line, auto_line, line_num, hash_dict, save_folder, exif_line=exif_line)
+    def make_metadata(self, data_line, auto_line, line_num, hash_dict, exif_line, save_folder, absolute_path=True):
+        return Metadata(data_line, auto_line, line_num, hash_dict, save_folder, exif_line=exif_line, absolute_path=absolute_path)
     
     def save_metadata_list_as_pickle(self, metadata_list):
         pickle.dump(metadata_list, open(self.pickle_location, 'wb+'))
@@ -475,7 +483,7 @@ class ImageByAutoTag(Criteria):
 
 import time
 running_time = time.time()
-def fetch_and_save_image(img_path, url, MIN_EDGE=0, MAX_NUM_OF_TRAILS=3, RUN_TIME=1000, MIN_IMAGE_SIZE=2100):
+def fetch_and_save_image(img_path, url, MIN_EDGE=0, MAX_ASPECT_RATIO=None, MAX_NUM_OF_TRAILS=3, RUN_TIME=1000, MIN_IMAGE_SIZE=2100):
     """Return true if image is valid and successfully downloaded
     """
     global running_time
@@ -486,14 +494,12 @@ def fetch_and_save_image(img_path, url, MIN_EDGE=0, MAX_NUM_OF_TRAILS=3, RUN_TIM
             img = Image.open(BytesIO(response.content))
             if img.size[0] < MIN_EDGE or img.size[1] < MIN_EDGE:
                 return False
+            max_edge = max(img.size[0], img.size[1])
+            min_edge = min(img.size[0], img.size[1])
+            ratio = max_edge / min_edge
+            if MAX_ASPECT_RATIO and ratio > MAX_ASPECT_RATIO:
+                return False
             img.save(img_path)
-            # is_removed = remove_broken_path(img_path)
-            # if is_removed:
-            #     return False
-            # else:
-            #     if os.path.getsize(img_path) < MIN_IMAGE_SIZE:
-            #         return False
-            #     return True
             if os.path.getsize(img_path) < MIN_IMAGE_SIZE:
                 return False
             return True
@@ -694,50 +700,50 @@ class FlickrParser():
             print(f"Save folder: {save_folder}")
             print(f"Save pickle: {save_pickle}")
         
-        self._plot_buckets(save_folder, sorted_buckets_list, buckets_dict, mode=mode, date=date)
+        plot_buckets(save_folder, sorted_buckets_list, buckets_dict, mode=mode, date=date)
         return sorted_buckets_list, buckets_dict
     
-    def _plot_buckets(self, save_folder, sorted_buckets_list, buckets_dict, mode='month', date='date_taken'):
-        save_png_barchart = os.path.join(save_folder, f"dataset_bucke_{date}.png")
-        save_png_freqchart = os.path.join(save_folder, f"dataset_frequency_{date}.png")
-        min_count = None
-        max_count = None
-        avg_count = 0
-        for b in sorted_buckets_list:
-            count = len(buckets_dict[b])
-            if not min_count or count < min_count:
-                min_count = count
-            if not max_count or count > max_count:
-                max_count = count
-            avg_count += count
-        avg_count = avg_count / len(sorted_buckets_list)
-        
-        print(f"Min/Max number of images per bucket: {min_count}/{max_count}. Average is {avg_count}")
-        plt.figure(figsize=(8,8))
-        axes = plt.gca()
-        axes.set_ylim([0,max_count])
-        plt.title(f'Number of samples per {mode}.')
-        x = [str(a) for a in sorted_buckets_list]
-        y = [len(buckets_dict[b]) for b in sorted_buckets_list]
-        plt.bar(x, y, align='center')
-        plt.axhline(y=avg_count, label=f"Mean Number of Samples {avg_count}", linestyle='--', color='black')
-        x_tick = [str(a) for a in sorted_buckets_list]
-        plt.xticks(x, x_tick)
-        plt.xlabel('Date')
-        plt.ylabel(f'Number of samples for each {mode}')
-        plt.setp(axes.get_xticklabels(), rotation=90, horizontalalignment='right', fontsize='large')
-        # plt.legend()
-        plt.savefig(save_png_barchart)
-        plt.close('all')
+def plot_buckets(save_folder, sorted_buckets_list, buckets_dict, mode='month', date='date_taken', optional_name=""):
+    save_png_barchart = os.path.join(save_folder, f"dataset_bucket_{date}{optional_name}.png")
+    save_png_freqchart = os.path.join(save_folder, f"dataset_frequency_{date}{optional_name}.png")
+    min_count = None
+    max_count = None
+    avg_count = 0
+    for b in sorted_buckets_list:
+        count = len(buckets_dict[b])
+        if not min_count or count < min_count:
+            min_count = count
+        if not max_count or count > max_count:
+            max_count = count
+        avg_count += count
+    avg_count = avg_count / len(sorted_buckets_list)
+    
+    print(f"Min/Max number of images {optional_name} per bucket: {min_count}/{max_count}. Average is {avg_count}")
+    plt.figure(figsize=(8,8))
+    axes = plt.gca()
+    axes.set_ylim([0,max_count])
+    plt.title(f'Number of samples per {mode}.')
+    x = [str(a) for a in sorted_buckets_list]
+    y = [len(buckets_dict[b]) for b in sorted_buckets_list]
+    plt.bar(x, y, align='center')
+    plt.axhline(y=avg_count, label=f"Mean Number of Samples {avg_count}", linestyle='--', color='black')
+    x_tick = [str(a) for a in sorted_buckets_list]
+    plt.xticks(x, x_tick)
+    plt.xlabel('Date')
+    plt.ylabel(f'Number of samples for each {mode}')
+    plt.setp(axes.get_xticklabels(), rotation=90, horizontalalignment='right', fontsize='large')
+    # plt.legend()
+    plt.savefig(save_png_barchart)
+    plt.close('all')
 
-        
-        bins = np.linspace(min_count, max_count, 15)
-        plt.figure(figsize=(8,8))
-        plt.hist(y, bins, alpha=0.5, label='Number of samples')
-        plt.legend(loc='upper right')
-        plt.tight_layout()
-        plt.savefig(save_png_freqchart)
-        print(f"Saving image at {save_png_freqchart}")
+    
+    bins = np.linspace(min_count, max_count, 15)
+    plt.figure(figsize=(8,8))
+    plt.hist(y, bins, alpha=0.5, label='Number of samples')
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+    plt.savefig(save_png_freqchart)
+    print(f"Saving image at {save_png_freqchart}")
 
 def create_sorted_date_buckets(metadata_list, mode='year', date='date_taken'):
     buckets_dict = {}
@@ -754,6 +760,29 @@ def create_sorted_date_buckets(metadata_list, mode='year', date='date_taken'):
         
     sorted_buckets_list = sorted(buckets_dict.keys())
     return sorted_buckets_list, buckets_dict
+
+def plot_time_buckets(metadata_list, save_folder, mode='year', date='date_uploaded', optional_name=""):
+    buckets_dict = {}
+
+    for meta in metadata_list:
+        if date == 'date_uploaded':
+            date_obj = datetime.utcfromtimestamp(int(meta.DATE_UPLOADED))
+        else:
+            raise NotImplementedError()
+
+        if mode == 'year':
+            time_meta = date_obj.year
+        elif mode == 'month':
+            time_meta = (date_obj.year, date_obj.month)
+        
+        if time_meta in buckets_dict:
+            buckets_dict[time_meta].append(meta)
+        else:
+            buckets_dict[time_meta] = [meta]
+        
+    sorted_buckets_list = sorted(buckets_dict.keys())
+    
+    plot_buckets(save_folder, sorted_buckets_list, buckets_dict, mode=mode, date=date, optional_name=optional_name)
 
 if __name__ == "__main__":
     args = argparser.parse_args()
