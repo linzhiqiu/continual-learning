@@ -11,6 +11,7 @@ running_time = time.time()
 
 from PIL import Image
 import requests
+import subprocess
 from tqdm import tqdm
 import pickle
 from datetime import datetime
@@ -122,6 +123,38 @@ class FlickrFolder():
         if not os.path.exists(self.image_folder):
             os.makedirs(self.image_folder)
     
+    def copy_to_new_save_folder(self, idx, new_folder_location):
+        new_folder = os.path.join(new_folder_location, str(idx))
+        if os.path.exists(new_folder):
+            # print(f"{new_folder} already exists")
+            # import pdb; pdb.set_trace()
+            return
+
+        os.makedirs(new_folder)
+
+        if not self.has_enough():
+            import pdb; pdb.set_trace()
+            return
+        
+        new_metadata_location = os.path.join(new_folder, "metadata.pickle")
+        
+        new_image_folder = os.path.join(new_folder, "images")
+        if os.path.exists(new_image_folder):
+            print(f"{new_image_folder} already exists")
+            import pdb; pdb.set_trace()
+            return
+
+        cp_script = f'cp -r {self.image_folder}/. {new_image_folder}'
+        subprocess.call(cp_script, shell=True)
+        print(f"Done {cp_script}")
+
+        old_metadata_list = self.load_metadata()
+        for meta in old_metadata_list:
+            img_name = meta.metadata.IMG_PATH.split(os.sep)[-1]
+            new_img_name = os.path.join(new_image_folder, img_name)
+            meta.metadata.IMG_PATH = new_img_name
+        save_obj_as_pickle(new_metadata_location, old_metadata_list)
+    
     def has_enough(self):
         metadata_list = self.load_metadata()
         return len(metadata_list) == self.num_images
@@ -132,6 +165,12 @@ class FlickrFolder():
     def save_metadata(self, metadata_list):
         print(f"Save at {self.metadata_location}")
         save_obj_as_pickle(self.metadata_location, metadata_list)
+    
+    def get_folder_path(self):
+        return self.folder
+    
+    
+
 
 class FlickrFolderAccessor():
     def __init__(self, flickr_folder):
@@ -145,13 +184,7 @@ class FlickrFolderAccessor():
         return len(self.metadata_list)
 
 class FlickrAccessor():
-    def __init__(self, args, data_accessor_path=None):
-        if args.all_images:
-            criteria = AllValidDate(args)
-    
-        flickr_parser = FlickrParserBuckets(args, criteria)
-        folders = flickr_parser.load_images()
-        
+    def __init__(self, folders):
         self.flickr_folders = [FlickrFolderAccessor(f) for f in folders]
 
         self.total_length = 0
@@ -160,13 +193,41 @@ class FlickrAccessor():
             self.total_length += len(f)
 
     def __getitem__(self, idx):
-        f_idx = idx / self.num_images
+        f_idx = int(idx / self.num_images)
         i_idx = idx % self.num_images
         return self.flickr_folders[f_idx][i_idx]
     
     def __len__(self):
         return self.total_length
+
+class FlickrAccessorPathOnly():
+    def __init__(self, folders):
+        self.flickr_folders = [FlickrFolderAccessor(f) for f in folders]
+
+        self.total_length = 0
+        for f in self.flickr_folders:
+            self.total_length += len(f)
+            self.imgs = [meta.get_path() for meta in f]
+
+    def __getitem__(self, idx):
+        return self.imgs[idx]
     
+    def __len__(self):
+        return self.total_length
+
+def get_flickr_accessor(args, new_folder_path=None):
+    if args.all_images:
+        criteria = AllValidDate(args)
+    
+    flickr_parser = FlickrParserBuckets(args, criteria)
+    if new_folder_path == None:
+        folders = flickr_parser.load_folders()
+    else:
+        print("Copying all content of flickr folders")
+        folders = flickr_parser.copy_to_new_save_folder(new_folder_path)
+        
+    return FlickrAccessor(folders)
+
 class FlickrParserBuckets():
     def __init__(self, args, criteria : Criteria):
         self.chunk_size = args.chunk_size
@@ -184,7 +245,21 @@ class FlickrParserBuckets():
         self.flickr_folders = load_pickle(self.main_pickle_location, default_obj=[])
         self._check(self.flickr_folders)
 
-    def load_images(self):
+    def copy_to_new_save_folder(self, new_save_folder):
+        new_main_pickle_location = os.path.join(new_save_folder, "all_folders.pickle")
+        loaded_result = load_pickle(new_main_pickle_location)
+        if loaded_result:
+            return loaded_result
+
+        new_flickr_folders = []
+        for idx, folder in enumerate(self.flickr_folders):
+            folder.copy_to_new_save_folder(idx, new_save_folder)
+            new_folder = FlickrFolder(idx, new_save_folder, num_images=folder.num_images, last_index=folder.last_index)
+            new_flickr_folders.append(new_folder)
+        save_obj_as_pickle(new_main_pickle_location, new_flickr_folders)
+        return new_flickr_folders
+
+    def load_folders(self):
         return self.flickr_folders
 
     def _check(self, flickr_folders):

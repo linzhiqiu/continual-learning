@@ -33,6 +33,7 @@ class SimpleDataset(Dataset):
         sample = self.transform(sample)
         return sample, label
 
+
 def get_imgnet_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225])
@@ -54,10 +55,12 @@ def get_imgnet_transforms():
     return train_transform, test_transform
 
 def make_optimizer(network, lr):
-    optimizer = torch.optim.SGD(network.parameters(), 
-                                lr=lr,
-                                weight_decay=1e-5,
-                                momentum=0.9)
+    optimizer = torch.optim.SGD(
+                    list(filter(lambda x : x.requires_grad, network.parameters())),
+                    lr=lr,
+                    weight_decay=1e-5,
+                    momentum=0.9
+                )
     return optimizer
 
 def make_scheduler(optimizer, step_size=50):
@@ -76,11 +79,11 @@ def make_loader(dataset, transform, shuffle=False, batch_size=256, num_workers=0
         num_workers=num_workers,
     )
 
-def make_model(arch, pretrained, selfsupervised):
+def make_model(arch, pretrained, selfsupervised, train_mode='finetune', output_size=1000):
     if pretrained or selfsupervised:
         print("=> using pre-trained model '{}'".format(arch))
         model = models.__dict__[arch](pretrained=True)
-        if selfsupervised:
+        if arch == 'resnet50' and selfsupervised:
             if selfsupervised == "moco_v2":
                 model = self_supervised.moco_v2(model)
             elif selfsupervised == "byol":
@@ -95,6 +98,21 @@ def make_model(arch, pretrained, selfsupervised):
         print("=> creating model '{}'".format(arch))
         model = models.__dict__[arch]()
         print("No model checkpoint is supplied")
+    
+    if arch == 'resnet50':
+        # Change output size
+        if model.fc.weight.shape[0] != output_size:
+            print(f"changing the size of last layer to {output_size}")
+            model.fc = torch.nn.Linear(model.fc.weight.shape[1], output_size)
+        
+        # Change requires_grad flag if train_mode == 'freeze'
+        if train_mode == 'freeze':
+            for p in model.parameters():
+                p.requires_grad = False
+            for p in model.fc.parameters():
+                p.requires_grad = True
+    else:
+        raise NotImplementedError()
     return model
 
 def train(train_loader, val_loader, test_loader, network, epochs=150, lr=0.1, step_size=60):

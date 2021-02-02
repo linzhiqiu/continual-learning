@@ -227,9 +227,9 @@ class ImageBySVMTagList(Criteria):
     
     def sync(self):
         # This function exists because of a bug in code.
-        tag_dict = self.load_tag_dict()
-        print("Loaded tag_dict")
-        print_tag_dict(tag_dict)
+        # tag_dict = self.load_tag_dict()
+        # print("Loaded tag_dict")
+        # print_tag_dict(tag_dict)
         metadata_list = self.get_metadata_pickle()
         computed_tag_dict = {tag : [] for tag in self.tag_groups}
         for meta in metadata_list:
@@ -252,7 +252,7 @@ class ImageBySVMTagList(Criteria):
         print("reverse tag_dict")
         print_tag_dict(computed_tag_dict)
         self.tag_dict = computed_tag_dict
-        self.save_tag_pickle()
+        # self.save_tag_pickle()
         return computed_tag_dict
     
 

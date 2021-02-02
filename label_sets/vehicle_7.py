@@ -1,0 +1,1 @@
+labels = ['bike','car','motorcycle','airplane', 'bus', 'helicopter', 'train']

@@ -1,0 +1,1 @@
+labels = ['cat','bird','automobile','airplane', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']

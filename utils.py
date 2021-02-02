@@ -1,5 +1,6 @@
 import pickle
 import os
+import numpy as np
 
 def sort_metadata_by_date(metadata_list, date='date_uploaded'):
     sort_func = lambda meta : getattr(meta, date)()
@@ -10,6 +11,10 @@ def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+def normalize(features):
+    # Normalize a 2d features
+    return features / np.linalg.norm(features, axis=1).reshape(features.shape[0],1)
 
 import more_itertools as mit
 def divide(lst, n):

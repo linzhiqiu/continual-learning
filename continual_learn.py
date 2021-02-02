@@ -45,8 +45,10 @@ argparser.add_argument("--tag_group",
 argparser.add_argument('--num_of_buckets', default=2, type=int,
                        metavar='N',
                        help='Divide by num_of_buckets (default: 2)')
-argparser.add_argument('--test', dest='test', action='store_true',
-                       help='Only test')
+argparser.add_argument('--train_bucket', default='past', choices=['past', 'future'],
+                       help='Training bucket')
+argparser.add_argument('--train_mode', default='finetune', choices=['finetune', 'freeze'],
+                       help='Train mode')
 argparser.add_argument('--threshold_by_minimum', dest='threshold_by_minimum', action='store_true',
                        help='Each tag will have same number of images (minmal over all classes)')
 argparser.add_argument('--threshold_by_fixed_length', dest='threshold_by_fixed_length', action='store_true',
@@ -60,8 +62,6 @@ argparser.add_argument('--pretrained', dest='pretrained', action='store_true',
                        help='use imagenet pre-trained model')
 argparser.add_argument('--selfsupervised', default=None, choices=['moco_v2', 'byol', 'deepcluster', 'relativeloc', 'rot'],
                        help='name of self supervised model')
-argparser.add_argument('--classes', default=1000, type=int, metavar='N',
-                       help='number of total classes for the experiment')
 argparser.add_argument('--epoch', default=450, type=int, metavar='N',
                        help='number of total epochs to run')
 argparser.add_argument('--step', default=200, type=int, metavar='N',
@@ -202,26 +202,20 @@ if __name__ == '__main__':
 
 
     assert args.num_of_buckets == 2
-    network = make_model(args.arch, args.pretrained, args.selfsupervised)
+    network = make_model(args.arch, args.pretrained, args.selfsupervised, output_size=len(list(tag_dict.keys())), train_mode=args.train_mode)
     first_loader = loaders_divided_by_date[0]
     second_loader = loaders_divided_by_date[1]
-    if args.test:
-        network.load_state_dict(torch.load("second.pickle"))
-
-        print("On test set of first bucket")
-        test(first_loader['test'], network, save_loc=None)
-        print("On all images of first bucket")
-        test(first_loader['all'], network, save_loc=None)
-        print("On test set of second bucket")
-        test(second_loader['test'], network, save_loc=None)
-        print("On all images of second bucket")
-        test(second_loader['all'], network, save_loc=None)
-        exit(0)
-
-    train(second_loader['train'], second_loader['val'], second_loader['test'], network, epochs=args.epoch, lr=args.lr, step_size=args.step)
-    # network = train(first_loader['train'], first_loader['val'], first_loader['test'], network, epochs=args.epoch, lr=args.lr, step_size=args.step)
+    if args.train_bucket == 'past':
+        network = train(first_loader['train'], first_loader['val'], first_loader['test'], network, epochs=args.epoch, lr=args.lr, step_size=args.step)
+    else:
+        network = train(second_loader['train'], second_loader['val'], second_loader['test'], network, epochs=args.epoch, lr=args.lr, step_size=args.step)
+    
+    save_model_dir = "./saved_models"
+    if not os.path.exists(save_model_dir):
+        os.makedirs(save_model_dir)
+    save_loc = f'{save_model_dir}{args.train_mode}_train_on_{args.train_bucket}.pickle'
     print("On test set of first bucket")
-    test(first_loader['test'], network, save_loc='second.pickle')
+    test(first_loader['test'], network, save_loc=save_loc)
     print("On all images of first bucket")
     test(first_loader['all'], network)
     print("On test set of second bucket")
