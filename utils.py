@@ -2,10 +2,19 @@ import pickle
 import os
 import numpy as np
 
-def sort_metadata_by_date(metadata_list, date='date_uploaded'):
-    sort_func = lambda meta : getattr(meta, date)()
-    all_meta_list_sorted = sorted(metadata_list, key=lambda x: sort_func(x))
-    return all_meta_list_sorted
+def sort_metadata_by_date(metadata_list, date='date_uploaded', features=None):
+    if type(features) != type(None):
+        if type(features) == list:
+            feature_list = features
+        else:
+            feature_list = [features[i] for i in range(features.shape[0])]
+        sort_func = lambda x : getattr(x[0], date)()
+        all_meta_list_sorted = sorted(zip(metadata_list, feature_list), key=lambda x: sort_func(x))
+        return all_meta_list_sorted
+    else:
+        sort_func = lambda meta : getattr(meta, date)()
+        all_meta_list_sorted = sorted(metadata_list, key=lambda x: sort_func(x))
+        return all_meta_list_sorted
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -22,7 +31,7 @@ def divide(lst, n):
     return [list(c) for c in mit.divide(n, lst)]
 
 def save_obj_as_pickle(pickle_location, obj):
-    pickle.dump(obj, open(pickle_location, 'wb+'))
+    pickle.dump(obj, open(pickle_location, 'wb+'), protocol=pickle.HIGHEST_PROTOCOL)
     print(f"Save object as a pickle at {pickle_location}")
 
 def load_pickle(pickle_location, default_obj=None):

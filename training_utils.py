@@ -33,8 +33,22 @@ class SimpleDataset(Dataset):
         sample = self.transform(sample)
         return sample, label
 
+class CLIPDataset(Dataset):
+    def __init__(self, samples, class_names=None):
+        self.samples = samples
+        self.class_names = class_names
+    
+    def __len__(self):
+        return len(self.samples)
+    
+    def __getitem__(self,index):
+        sample, label = self.samples[index]
+        sample = torch.from_numpy(sample)
+        return sample, label
 
 def get_imgnet_transforms():
+    # Note that this is not exactly imagenet transform/moco transform for val set
+    # Because we resize to 224 instead of 256
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225])
     train_transform = transforms.Compose([
@@ -79,10 +93,41 @@ def make_loader(dataset, transform, shuffle=False, batch_size=256, num_workers=0
         num_workers=num_workers,
     )
 
+def make_clip_loader(dataset, shuffle=False, batch_size=256, num_workers=0):
+    return torch.utils.data.DataLoader(
+        CLIPDataset(dataset), 
+        batch_size=batch_size,
+        shuffle=shuffle, 
+        num_workers=num_workers,
+    )
+
+class MLP(torch.nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(MLP, self).__init__()
+        self.input_size = input_size
+        self.hidden_size  = hidden_size
+        self.output_size = output_size
+        self.fc1 = torch.nn.Linear(self.input_size, self.hidden_size)
+        self.relu = torch.nn.ReLU()
+        self.fc2 = torch.nn.Linear(self.hidden_size, self.output_size)
+
+    def forward(self, x):
+        hidden = self.fc1(x)
+        relu = self.relu(hidden)
+        output = self.fc2(relu)
+        return output
+
 def make_model(arch, pretrained, selfsupervised, train_mode='finetune', output_size=1000):
+    if arch == 'mlp':
+        print(f"Using a mlp network with input size 1024")
+        return MLP(1024, 2048, output_size)
+    elif arch == 'linear':
+        print(f"Using a single linear layer")
+        return torch.nn.Linear(1024, output_size)
+
     if pretrained or selfsupervised:
         print("=> using pre-trained model '{}'".format(arch))
-        model = models.__dict__[arch](pretrained=True)
+        model = models.__dict__[arch](pretrained=pretrained)
         if arch == 'resnet50' and selfsupervised:
             if selfsupervised == "moco_v2":
                 model = self_supervised.moco_v2(model)
@@ -94,6 +139,12 @@ def make_model(arch, pretrained, selfsupervised, train_mode='finetune', output_s
                 model = self_supervised.deepcluster(model)
             elif selfsupervised == "relativeloc":
                 model = self_supervised.relativeloc(model)
+            elif selfsupervised == "moco_v2_yfcc_feb18_bucket_0_gpu_8":
+                model = self_supervised.moco_v2_yfcc_feb18_bucket_0_gpu_8(model)
+            elif selfsupervised == "moco_v2_yfcc_feb18_bucket_0_gpu_8_github":
+                model = self_supervised.moco_v2_yfcc_feb18_bucket_0_gpu_8_github(model)
+            else:
+                raise NotImplementedError()
     else:
         print("=> creating model '{}'".format(arch))
         model = models.__dict__[arch]()
@@ -107,6 +158,7 @@ def make_model(arch, pretrained, selfsupervised, train_mode='finetune', output_s
         
         # Change requires_grad flag if train_mode == 'freeze'
         if train_mode == 'freeze':
+            print("Freezing the model!!!!!!!!!!!!!!!!!!!!!!!")
             for p in model.parameters():
                 p.requires_grad = False
             for p in model.fc.parameters():
@@ -119,7 +171,7 @@ def train(train_loader, val_loader, test_loader, network, epochs=150, lr=0.1, st
     network = network.cuda()
     optimizer = make_optimizer(network, lr)
     scheduler = make_scheduler(optimizer, step_size=step_size)
-            
+    
     criterion = torch.nn.NLLLoss(reduction='mean')
 
     avg_loss_per_epoch = []
@@ -129,6 +181,7 @@ def train(train_loader, val_loader, test_loader, network, epochs=150, lr=0.1, st
 
     avg_test_acc_per_epoch = []
 
+    best_val_epoch_train_acc = 0
     best_val_acc = 0
     best_val_epoch = None
 
@@ -193,9 +246,11 @@ def train(train_loader, val_loader, test_loader, network, epochs=150, lr=0.1, st
                     print(f"Best val accuracy at epoch {epoch} being {avg_acc}")
                     best_val_epoch = epoch
                     best_val_acc = avg_acc
+                    best_val_epoch_train_acc = avg_acc_per_epoch[-1]
+                    print(f"Train accuracy at epoch {epoch} being {best_val_epoch_train_acc}")
                     best_val_network = copy.deepcopy(network.state_dict())
-                    print("Test additional:")
-                    test(test_loader, network, save_loc=None)
+                    # print("Test additional:")
+                    # test(test_loader, network, save_loc=None)
             else:
                 avg_test_acc_per_epoch.append(avg_acc)
             print(f"Average {phase} Loss {avg_loss}, Accuracy {avg_acc}")
@@ -206,7 +261,7 @@ def train(train_loader, val_loader, test_loader, network, epochs=150, lr=0.1, st
     test(test_loader, network, save_loc=None)
     return network
 
-def test(test_loader, network, save_loc='temp.model', class_names=None):
+def test(test_loader, network, save_loc=None, class_names=None):
     network = network.cuda().eval()
     running_corrects = 0.
     count = 0
@@ -238,3 +293,4 @@ def test(test_loader, network, save_loc='temp.model', class_names=None):
     print(f"Best Test Accuracy on test set: {avg_acc}")
     if save_loc:
         torch.save(network.state_dict(), save_loc)
+    return avg_acc

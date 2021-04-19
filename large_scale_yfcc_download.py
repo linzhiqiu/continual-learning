@@ -1,5 +1,5 @@
 # A script to parse flickr datasets/autotags
-# Download all: python large_scale_yfcc_download.py --all_images --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 100000;
+# Download all: python large_scale_yfcc_download.py --all_images --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
 from io import BytesIO
 import os
 import json
@@ -200,20 +200,20 @@ class FlickrAccessor():
     def __len__(self):
         return self.total_length
 
-class FlickrAccessorPathOnly():
-    def __init__(self, folders):
-        self.flickr_folders = [FlickrFolderAccessor(f) for f in folders]
+# class FlickrAccessorPathOnly():
+#     def __init__(self, folders):
+#         self.flickr_folders = [FlickrFolderAccessor(f) for f in folders]
 
-        self.total_length = 0
-        for f in self.flickr_folders:
-            self.total_length += len(f)
-            self.imgs = [meta.get_path() for meta in f]
+#         self.total_length = 0
+#         for f in self.flickr_folders:
+#             self.total_length += len(f)
+#             self.imgs = [meta.get_path() for meta in f]
 
-    def __getitem__(self, idx):
-        return self.imgs[idx]
+#     def __getitem__(self, idx):
+#         return self.imgs[idx]
     
-    def __len__(self):
-        return self.total_length
+#     def __len__(self):
+#         return self.total_length
 
 def get_flickr_accessor(args, new_folder_path=None):
     if args.all_images:
@@ -264,7 +264,7 @@ class FlickrParserBuckets():
 
     def _check(self, flickr_folders):
         lind_idx = 0
-        for flickr_folder in flickr_folders:
+        for folder_idx, flickr_folder in enumerate(flickr_folders):
             if not flickr_folder.has_enough():
                 import pdb; pdb.set_trace()
             elif flickr_folder.num_images != self.chunk_size:

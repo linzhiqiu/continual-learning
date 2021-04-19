@@ -9,9 +9,9 @@ def plot_scores_jupyter(score_list, plot_mean=False):
     max_count = None
     avg_count = 0
     for s in score_list:
-        if not min_count or count < min_count:
+        if not min_count or s < min_count:
             min_count = s
-        if not max_count or count > max_count:
+        if not max_count or s > max_count:
             max_count = s
         avg_count += s
     avg_count = avg_count / len(score_list)
@@ -20,7 +20,7 @@ def plot_scores_jupyter(score_list, plot_mean=False):
     plt.figure(figsize=(8,8))
     if plot_mean:
         plt.axhline(y=avg_count, label=f"Mean scores of Samples {avg_count}", linestyle='--', color='black')
-    plt.hist(y, bins, alpha=0.5, label='Number of samples')
+    plt.hist(score_list, bins, alpha=0.5, label='Number of samples')
     plt.legend(loc='upper right')
     plt.tight_layout()
 

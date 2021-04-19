@@ -1,5 +1,7 @@
 # A script to parse flickr datasets/autotags
 # Download all: python large_scale_feature.py --all_images --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
+# Download all: python large_scale_feature.py --all_images --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000 --model_name RN50;
+
 from io import BytesIO
 import os
 import json
@@ -39,7 +41,9 @@ argparser.add_argument("--model_name",
                         help="The CLIP model to use")
 argparser.add_argument("--new_folder_path", 
                         # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_25',
-                        default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_31',
+                        # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_31',
+                        # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_15',
+                        default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18',
                         help="It will copy all things to this folder. If None, no copying is done")
 argparser.add_argument("--img_dir", 
                         default='/project_data/ramanan/yfcc100m_all',

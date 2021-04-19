@@ -1,6 +1,6 @@
 # https://github.com/anishathalye/imagenet-simple-labels/blob/master/imagenet-simple-labels.json
-labels = 
-["tench",
+labels = [
+"tench",
 "goldfish",
 "great white shark",
 "tiger shark",
