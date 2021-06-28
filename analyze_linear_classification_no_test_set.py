@@ -248,6 +248,7 @@ def train(train_loader, test_loader,
         for epoch in range(0, epochs):
             print(f"Epoch {epoch}")
             for phase in loaders.keys():
+                # import pdb; pdb.set_trace()
                 if phase == 'train':
                     if train_mode in TRAIN_MODES_CATEGORY['cnn_linear_feature']:
                         print("Using Frozen Network in Eval Mode")
@@ -450,7 +451,7 @@ if __name__ == '__main__':
         results_dict_path = os.path.join(main_label_set_path,
                                          f"results_dict_{dataset_str(TRAIN_SET_RATIO, TEST_SET_RATIO)}_{args.train_mode}_ex_{excluded_bucket_idx}.pickle")
         
-        if not os.path.exists(results_dict_path):
+        if not os.path.exists(results_dict_path) or True:
             all_query = sorted(list(dataset_dict[0].keys()))
             models_dict = {'models': {}, 'b1_b2_accuracy_matrix': {}, 'accuracy': {},
                            'b1_b2_per_class_accuracy_dict': {},
@@ -467,6 +468,7 @@ if __name__ == '__main__':
             elif args.train_mode in TRAIN_MODES_CATEGORY['linear'] + TRAIN_MODES_CATEGORY['nearest_mean']:
                 feature_name_list = ['clip_features']
             for feature_name in feature_name_list:
+                continue
                 single_accuracy_test = np.zeros((all_bucket, all_bucket))
                 only_positive_accuracy_test = np.zeros((all_bucket, all_bucket))
                 avg_per_class_accuracy_test = np.zeros((all_bucket, all_bucket))

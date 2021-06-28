@@ -2,6 +2,12 @@ import pickle
 import os
 import numpy as np
 
+def makedirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    else:
+        print(path + " already exists.")
+
 def sort_metadata_by_date(metadata_list, date='date_uploaded', features=None):
     if type(features) != type(None):
         if type(features) == list:

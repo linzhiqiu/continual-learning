@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
     end = time.time()
     print(f"{end - start} seconds are used to load all {length_of_dataset} images")
-    
+    # import pdb; pdb.set_trace()
     for i, folder_path in enumerate(folder_paths):
         main_pickle_location = get_main_save_location(folder_path, args.model_name)
         print(main_pickle_location)

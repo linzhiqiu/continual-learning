@@ -67,8 +67,12 @@ QUERY_TITLE_DICT = {
 
 # LABEL_SETS = ['dynamic', 'random', 'random2', 'vehicle_7', 'cifar10',
 #               'tech_7_new', 'sports_30', 'fashion_25', 'cifar100', 'imagenet1K']
-LABEL_SETS = ['dynamic', 'vehicle_7', 'cifar10',
-              'tech_7_new', 'sports_30', 'fashion_25', 'cifar100', 'imagenet1K']
+LABEL_SETS = ['dynamic', 'dynamic_dress', 'dynamic_dress_soccer',
+#  'dynamic_dress_football',
+            #'dynamic_hoodies',
+            # 'vehicle_7', 'cifar10',
+            #   'tech_7_new', 'sports_30', 'fashion_25', 'cifar100', 'imagenet1K'
+              ]
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--model_name", 

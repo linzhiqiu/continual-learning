@@ -46,6 +46,53 @@ class CLIPDataset(Dataset):
         sample = torch.from_numpy(sample)
         return sample, label
 
+
+class TensorDataset(Dataset):
+    def __init__(self, samples, class_names=None):
+        self.samples = samples
+        self.class_names = class_names
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, index):
+        sample, label = self.samples[index]
+        return sample, label
+
+def make_numpy_loader(items, batch_size, shuffle=False, num_workers=4):
+    return torch.utils.data.DataLoader(
+        CLIPDataset(items),
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+    )
+
+def make_tensor_loader(items, batch_size, shuffle=False, num_workers=4):
+    return torch.utils.data.DataLoader(
+        TensorDataset(items),
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+    )
+
+def make_image_loader(items, batch_size, shuffle=False, fixed_crop=False, num_workers=4):
+    items = [(m.get_path(), l) for m, l in items]
+    train_transform, test_transform = get_imgnet_transforms()
+    if shuffle and not fixed_crop:
+        transform = train_transform
+    else:
+        transform = test_transform
+    return make_loader(
+        items, transform, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers,
+    )
+
+def get_unnormalize_func():
+    inv_normalize = transforms.Normalize(
+        mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
+        std=[1/0.229, 1/0.224, 1/0.225]
+    )
+    return inv_normalize
+
 def get_imgnet_transforms():
     # Note that this is not exactly imagenet transform/moco transform for val set
     # Because we resize to 224 instead of 256
@@ -68,21 +115,32 @@ def get_imgnet_transforms():
     ])
     return train_transform, test_transform
 
-def make_optimizer(network, lr):
+def make_optimizer(network, lr, weight_decay=1e-5, momentum=0.9):
     optimizer = torch.optim.SGD(
-                    list(filter(lambda x : x.requires_grad, network.parameters())),
-                    lr=lr,
-                    weight_decay=1e-5,
-                    momentum=0.9
-                )
+        list(filter(lambda x: x.requires_grad, network.parameters())),
+        lr=lr,
+        weight_decay=weight_decay,
+        momentum=momentum
+    )
     return optimizer
 
-def make_scheduler(optimizer, step_size=50):
+def make_lbfgs_optimizer(network, lr):
+    # lr=1, max_iter=20, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn=None
+    optimizer = torch.optim.LBFGS(
+        list(filter(lambda x: x.requires_grad, network.parameters())),
+        lr=lr,
+        max_iter=20,
+        tolerance_grad=1e-07, tolerance_change=1e-09,
+        history_size=100, line_search_fn=None
+    )
+    return optimizer
+
+def make_scheduler(optimizer, step_size=50, gamma=0.1):
     scheduler = torch.optim.lr_scheduler.StepLR(
-                    optimizer,
-                    step_size=step_size,
-                    gamma=0.1
-                )
+        optimizer,
+        step_size=step_size,
+        gamma=gamma
+    )
     return scheduler
 
 def make_loader(dataset, transform, shuffle=False, batch_size=256, num_workers=0):
@@ -118,6 +176,7 @@ class MLP(torch.nn.Module):
         return output
 
 def make_model(arch, pretrained, selfsupervised, train_mode='finetune', output_size=1000):
+    # if output_size is None, then remove last layer
     if arch == 'mlp':
         print(f"Using a mlp network with input size 1024")
         return MLP(1024, 2048, output_size)
@@ -152,9 +211,13 @@ def make_model(arch, pretrained, selfsupervised, train_mode='finetune', output_s
     
     if arch == 'resnet50':
         # Change output size
-        if model.fc.weight.shape[0] != output_size:
+        if output_size == None:
+            print(f"removing the last layer")
+            model.fc = torch.nn.Identity()
+        elif model.fc.weight.shape[0] != output_size:
             print(f"changing the size of last layer to {output_size}")
             model.fc = torch.nn.Linear(model.fc.weight.shape[1], output_size)
+        
         
         # Change requires_grad flag if train_mode == 'freeze'
         if train_mode == 'freeze':

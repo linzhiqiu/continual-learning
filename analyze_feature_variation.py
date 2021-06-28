@@ -19,6 +19,8 @@
 # python analyze_feature_variation.py  --reverse_order --model_name RN50 --class_size 2000 --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --model_name RN50 --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
 # python analyze_feature_variation.py --reverse_order --model_name RN50 --class_size 100 --nn_size 2048 --avoid_multiple_class --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --model_name RN50 --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
 
+# python analyze_feature_variation.py --model_name RN50 --class_size 600 --nn_size 16000 --avoid_multiple_class --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --model_name RN50 --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
+# python analyze_feature_variation.py --reverse_order --model_name RN50 --class_size 600 --nn_size 16000 --avoid_multiple_class --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --model_name RN50 --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
 import sys
 sys.path.append("./CLIP")
 import os
@@ -209,7 +211,6 @@ if __name__ == '__main__':
             sub_folder_path = sub_folder_paths[b_idx]
             
             query_dict_i_path = os.path.join(sub_folder_path, f"query_dict_{b_idx}.pickle")
-            # if os.path.exists(query_dict_i_path):
             if os.path.exists(query_dict_i_path): # TODO
                 print(f"Exists: {query_dict_i_path}")
                 continue

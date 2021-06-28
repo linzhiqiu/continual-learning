@@ -1,6 +1,10 @@
 # Run after analyze_feature_variation.py
 # python analyze_feature_variation_negative.py --negative_label_set dynamic_negative_300 --model_name RN50 --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
 # python analyze_feature_variation_negative.py --negative_label_set dynamic_negative_3000 --model_name RN50 --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
+# python analyze_feature_variation_negative.py --negative_label_set dynamic_negative_600_v2 --model_name RN50 --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
+# python analyze_feature_variation_negative.py --negative_label_set dynamic_negative_600_dress --model_name RN50 --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
+# python analyze_feature_variation_negative.py --negative_label_set dynamic_negative_600_hoodies --model_name RN50 --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
+# python analyze_feature_variation_negative.py --negative_label_set dynamic_negative_600_dress_football --model_name RN50 --query_title none --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/ --num_of_bucket 11 --moco_model /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar
 
 import sys
 sys.path.append("./CLIP")
@@ -12,6 +16,7 @@ from faiss_utils import KNearestFaissFeatureChunks
 import numpy as np
 import time
 from datetime import datetime
+from tqdm import tqdm
 
 # from large_scale_feature import argparser, get_clip_loader, get_clip_features, get_feature_name, FlickrAccessor, FlickrFolder, get_flickr_accessor
 from large_scale_feature_chunks import argparser
@@ -49,28 +54,120 @@ NEG_DICT = {
         'single_negative_class' : True,# put all negative classes into one class
         'negative_ratio' : 0.1, # The ratio of negative samples per class to keep
     },
-    'dynamic_negative_3000' : {
-        'positive' : {
-            'label_set' : 'dynamic',
-            'model_name' : 'RN50',
-            'query_title' : 'none',
-            'class_size' : 300,
-            'avoid_multiple_class' : True,
-            'nn_size' : 8000,
+    'dynamic_negative_600_v2': {
+        'positive': {
+            'label_set': 'dynamic',
+            'model_name': 'RN50',
+            'query_title': 'none',
+            'class_size': 600,
+            'avoid_multiple_class': True,
+            'nn_size': 16000,
             'reverse_order':  False
         },
-        'negative' : {
-            'label_set' : 'dynamic',
-            'model_name' : 'RN50',
-            'query_title' : 'none',
-            'class_size' : 300,
-            'avoid_multiple_class' : True,
-            'nn_size' : 8000,
+        'negative': {
+            'label_set': 'dynamic',
+            'model_name': 'RN50',
+            'query_title': 'none',
+            'class_size': 600,
+            'avoid_multiple_class': True,
+            'nn_size': 16000,
             'reverse_order':  True
         },
-        'single_negative_class' : True, # put all negative classes into one class
-        'negative_ratio' : 1.0, # The ratio of negative samples per class to keep
+        'single_negative_class': True,  # put all negative classes into one class
+        'negative_ratio': 0.1,  # The ratio of negative samples per class to keep
+        'discard_overlap' : True,
     },
+    'dynamic_negative_600_dress': {
+        'positive': {
+            'label_set': 'dynamic_dress',
+            'model_name': 'RN50',
+            'query_title': 'none',
+            'class_size': 600,
+            'avoid_multiple_class': True,
+            'nn_size': 16000,
+            'reverse_order':  False
+        },
+        'negative': {
+            'label_set': 'dynamic_dress',
+            'model_name': 'RN50',
+            'query_title': 'none',
+            'class_size': 600,
+            'avoid_multiple_class': True,
+            'nn_size': 16000,
+            'reverse_order':  True
+        },
+        'single_negative_class': True,  # put all negative classes into one class
+        'negative_ratio': 0.1,  # The ratio of negative samples per class to keep
+        'discard_overlap': True,
+    },
+    # 'dynamic_negative_600_hoodies': {
+    #     'positive': {
+    #         'label_set': 'dynamic_hoodies',
+    #         'model_name': 'RN50',
+    #         'query_title': 'none',
+    #         'class_size': 600,
+    #         'avoid_multiple_class': True,
+    #         'nn_size': 16000,
+    #         'reverse_order':  False
+    #     },
+    #     'negative': {
+    #         'label_set': 'dynamic_hoodies',
+    #         'model_name': 'RN50',
+    #         'query_title': 'none',
+    #         'class_size': 600,
+    #         'avoid_multiple_class': True,
+    #         'nn_size': 16000,
+    #         'reverse_order':  True
+    #     },
+    #     'single_negative_class': True,  # put all negative classes into one class
+    #     'negative_ratio': 0.1,  # The ratio of negative samples per class to keep
+    #     'discard_overlap': True,
+    # },
+    'dynamic_negative_600_dress_soccer': {
+        'positive': {
+            'label_set': 'dynamic_dress_soccer',
+            'model_name': 'RN50',
+            'query_title': 'none',
+            'class_size': 600,
+            'avoid_multiple_class': True,
+            'nn_size': 16000,
+            'reverse_order':  False
+        },
+        'negative': {
+            'label_set': 'dynamic_dress_soccer',
+            'model_name': 'RN50',
+            'query_title': 'none',
+            'class_size': 600,
+            'avoid_multiple_class': True,
+            'nn_size': 16000,
+            'reverse_order':  True
+        },
+        'single_negative_class': True,  # put all negative classes into one class
+        'negative_ratio': 0.1,  # The ratio of negative samples per class to keep
+        'discard_overlap': True,
+    },
+    # 'dynamic_negative_3000' : {
+    #     'positive' : {
+    #         'label_set' : 'dynamic',
+    #         'model_name' : 'RN50',
+    #         'query_title' : 'none',
+    #         'class_size' : 300,
+    #         'avoid_multiple_class' : True,
+    #         'nn_size' : 8000,
+    #         'reverse_order':  False
+    #     },
+    #     'negative' : {
+    #         'label_set' : 'dynamic',
+    #         'model_name' : 'RN50',
+    #         'query_title' : 'none',
+    #         'class_size' : 300,
+    #         'avoid_multiple_class' : True,
+    #         'nn_size' : 8000,
+    #         'reverse_order':  True
+    #     },
+    #     'single_negative_class' : True, # put all negative classes into one class
+    #     'negative_ratio' : 1.0, # The ratio of negative samples per class to keep
+    # },
 }
 
 NEGATIVE_LABEL_SETS = list(NEG_DICT.keys())
@@ -297,20 +394,43 @@ if __name__ == '__main__':
                 
                 length_of_bucket = int(len(negative_query_dict_i[negative_query]['D']) * info_dict['negative_ratio'])
                 print(f"For {negative_query} we only keep {length_of_bucket}/{len(negative_query_dict_i[negative_query]['D'])} samples")
-                for i in range(length_of_bucket):
-                    score = negative_query_dict_i[negative_query]['D'][i]
-                    clip_feature = negative_query_dict_i[negative_query]['clip_features'][i]
-                    meta = negative_query_dict_i[negative_query]['metadata'][i]
-                    ID = meta.get_metadata().ID
-                    if ID in indices_dict:
-                        overlap_ID.append(ID)
-                    else:
-                        indices_dict[ID] = {
-                            'D' : score,
-                            'query' : NEGATIVE_LABEL,
-                            'clip_feature' : clip_feature,
-                            'metadata' : meta
-                        }
+                if 'discard_overlap' in info_dict and info_dict['discard_overlap']:
+                    uniques = 0
+                    print("Discard overlapping IDs from negative set..")
+
+                    for i in tqdm(range(len(negative_query_dict_i[negative_query]['D']))):
+                        if uniques >= length_of_bucket:
+                            print(f"Got {uniques} IDs from {negative_query}")
+                            break
+                        score = negative_query_dict_i[negative_query]['D'][i]
+                        clip_feature = negative_query_dict_i[negative_query]['clip_features'][i]
+                        meta = negative_query_dict_i[negative_query]['metadata'][i]
+                        ID = meta.get_metadata().ID
+                        if ID in indices_dict:
+                            continue
+                        else:
+                            indices_dict[ID] = {
+                                'D': score,
+                                'query': NEGATIVE_LABEL,
+                                'clip_feature': clip_feature,
+                                'metadata': meta
+                            }
+                            uniques += 1
+                else:
+                    for i in range(length_of_bucket):
+                        score = negative_query_dict_i[negative_query]['D'][i]
+                        clip_feature = negative_query_dict_i[negative_query]['clip_features'][i]
+                        meta = negative_query_dict_i[negative_query]['metadata'][i]
+                        ID = meta.get_metadata().ID
+                        if ID in indices_dict:
+                            overlap_ID.append(ID)
+                        else:
+                            indices_dict[ID] = {
+                                'D' : score,
+                                'query' : NEGATIVE_LABEL,
+                                'clip_feature' : clip_feature,
+                                'metadata' : meta
+                            }
             
             for unique_idx in indices_dict:
                 metadata = indices_dict[unique_idx]['metadata']
