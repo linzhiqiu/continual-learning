@@ -1,17 +1,15 @@
 # A script to parse flickr datasets/autotags
-# Download all: python large_scale_yfcc_download.py --all_images --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
+# Download all with valid date and min byte 10: python large_scale_yfcc_download.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
+# Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120: python large_scale_yfcc_download.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
 from io import BytesIO
 import os
 import json
 import time
 import argparse
-
+from dataclasses import dataclass
 import time
-running_time = time.time()
-
 from PIL import Image
 import requests
-import subprocess
 from tqdm import tqdm
 import pickle
 from datetime import datetime
@@ -19,33 +17,27 @@ from dateutil import parser
 import shutil
 import random
 import imagesize
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-from flickr_parsing import Metadata, Criteria, fetch_and_save_image
 from utils import save_obj_as_pickle, load_pickle
-# CKPT_POINT_LENGTH = 10000 # Save every CKPT_POINT_LENGTH metadata
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--img_dir", 
                         default='/project_data/ramanan/yfcc100m_all',
-                        help="The yfcc100M dataset store location")
+                        help="Yfcc100M dataset will be downloaded at this location")
 argparser.add_argument("--data_file", 
                         default='./yfcc100m/yfcc100m_dataset',
-                        help="The yfcc100M dataset file ")
+                        help="The yfcc100M dataset file")
 argparser.add_argument("--auto_file",
                         default='./yfcc100m/yfcc100m_autotags-v1', 
-                        help="The autotag file")
+                        help="The yfcc100M autotag file")
 argparser.add_argument("--exif_file",
                         default='./yfcc100m/yfcc100m_exif', 
-                        help="The exif file")
+                        help="The yfcc100M exif file")
 argparser.add_argument("--hash_file",
                         default='./yfcc100m/yfcc100m_hash', 
-                        help="The hash file")
+                        help="The yfcc100M hash file")
 argparser.add_argument("--hash_pickle",
                         default='./yfcc100m/yfcc100m_hash.pickle', 
-                        help="The hash dictionary pickle object")
+                        help="Save yfcc100M hash dictionary pickle object to this location")
 argparser.add_argument("--lines_file",
                         default='./yfcc100m/yfcc100m_lines', 
                         help="The lines file")
@@ -54,17 +46,278 @@ argparser.add_argument("--size_option",
                         help="Whether to use the original image size (max edge has 500 px).")
 argparser.add_argument("--chunk_size",
                         type=int, default=10000,
-                        help="The maximum images to store")
+                        help="The number of images to store in each subfolder")
+
+argparser.add_argument("--max_aspect_ratio",
+                       type=float, default=0,
+                       help="If not 0: Images with aspect ratio larger than max_aspect_ratio will be ignored.")
+argparser.add_argument("--min_edge",
+                       type=int, default=0,
+                       help="If not 0: Images with edge shorter than min_edge will be ignored.")
 argparser.add_argument("--min_size",
                         type=int, default=10,
-                        help="Images with size smaller than min_size will be ignored.")
-argparser.add_argument("--all_images",
-                        action='store_true',
-                        help="Store all images.")
+                        help="If not 0: Images with size (in bytes) smaller than min_size will be ignored.")
 argparser.add_argument("--use_valid_date",
                         type=bool, default=True,
                         help="Images with valid date (upload date < taken date) will be used if set true")   
 
+# The index for dataset file
+IDX_LIST = [
+    "ID",
+    "USER_ID",
+    "NICKNAME",
+    "DATE_TAKEN",
+    "DATE_UPLOADED",
+    "DEVICE",
+    "TITLE",
+    "DESCRIPTION",
+    "USER_TAGS",
+    "MACHINE_TAGS",
+    "LON",
+    "LAT",
+    "GEO_ACCURACY",
+    "PAGE_URL",
+    "DOWNLOAD_URL",
+    "LICENSE_NAME",
+    "LICENSE_URL",
+    "SERVER_ID",
+    "FARM_ID",
+    "SECRET",
+    "SECRET_ORIGINAL",
+    "EXT",
+    "IMG_OR_VIDEO",
+]
+
+
+IDX_TO_NAME = {i : IDX_LIST[i] for i in range(len(IDX_LIST))}
+
+@dataclass
+class MetadataObject():
+    """Represent Metadata for a single media object
+    Args:
+        num_init_classes (int): Number of initial labeled (discovered) classes
+        sample_per_class (int): Number of sample per discovered class
+        num_open_classes (int): Number of classes hold out as open set
+        ID (str): Photo/video identifier
+        USER_ID (str): User NSID
+        NICKNAME (str): User nickname
+        DATE_TAKEN (str): Date taken
+        DATE_UPLOADED (str): Date uploaded
+        DEVICE (str): Capture device
+        TITLE (str): Title
+        DESCRIPTION (str): Description
+        USER_TAGS (str): User tags (comma-separated)
+        MACHINE_TAGS (str): Machine tags (comma-separated)
+        LON (str): Longitude
+        LAT (str): Latitude
+        GEO_ACCURACY (str): Accuracy of the longitude and latitude coordinates (1=world level accuracy, ..., 16=street level accuracy)
+        PAGE_URL (str): Photo/video page URL
+        DOWNLOAD_URL (str): Photo/video download URL
+        LICENSE_NAME (str): License name
+        LICENSE_URL (str): License URL
+        SERVER_ID (str): Photo/video server identifier
+        FARM_ID (str): Photo/video farm identifier
+        SECRET (str): Photo/video secret
+        SECRET_ORIGINAL (str): Photo/video secret original
+        EXT (str): Extension of the original photo
+        IMG_OR_VIDEO (int): Photos/video marker (0 = photo, 1 = video)
+        AUTO_TAG_SCORES (dict): A dictionary of autotag_scores (key = category, value = confidence score in float)
+        LINE_NUM (int): Line Number
+        HASH_VALUE (str):  Hash value
+        EXIF (str) : EXIF
+        IMG_PATH (str): Image path
+        IMG_DIR (str): Image folder (default: None)
+    """
+    ID : str
+    USER_ID : str
+    NICKNAME : str
+    DATE_TAKEN : str
+    DATE_UPLOADED : str
+    DEVICE : str
+    TITLE : str
+    DESCRIPTION : str
+    USER_TAGS : str
+    MACHINE_TAGS : str
+    LON : str
+    LAT : str
+    GEO_ACCURACY : str
+    PAGE_URL : str
+    DOWNLOAD_URL : str
+    LICENSE_NAME : str
+    LICENSE_URL : str
+    SERVER_ID : str
+    FARM_ID : str
+    SECRET : str
+    SECRET_ORIGINAL : str
+    EXT : str
+    IMG_OR_VIDEO : int
+    AUTO_TAG_SCORES : dict
+    LINE_NUM : int
+    HASH_VALUE : str
+    EXIF : str
+    IMG_PATH : str
+    IMG_DIR : str = None
+
+
+class Metadata(object):
+    """A class for metadata verfication/manipulation
+    """
+    def __init__(self, data, autotag, line_num, hash_dict, save_folder, exif_line=None):
+        self.metadata = self._parse_metadata(data, autotag, line_num, hash_dict, save_folder, exif_line=exif_line)
+    
+    def get_metadata(self):
+        return self.metadata
+
+    def is_img(self):
+        return self.metadata.IMG_OR_VIDEO == 0
+    
+    def get_path(self):
+        if self.metadata.IMG_DIR == None:
+            return self.metadata.IMG_PATH
+        else:
+            return os.path.join(self.metadata.IMG_DIR, self.metadata.IMG_PATH)
+
+    def date_uploaded(self):
+        # Attributes: year, month, day, hour, minute, second, microsecond, and tzinfo.
+        return datetime.utcfromtimestamp(int(self.metadata.DATE_UPLOADED))
+    
+    def date_taken(self):
+        try:
+            return parser.isoparse(self.metadata.DATE_TAKEN)
+        except:
+            return None
+    
+    def _parse_line(self, line):
+        entries = line.strip().split("\t")
+        if len(entries) == 1:
+            return entries[0], None
+        else:
+            return entries[0], entries[1]
+
+    def _parse_metadata(self, data, autotag, line_num, hash_dict, save_folder, exif_line=None):
+        """Parse the metadata and return MetadataObject
+        """
+        entries = data.strip().split("\t")
+        for i, entry in enumerate(entries):
+            self.__setattr__(IDX_TO_NAME[i], entry)
+
+        metadict = {IDX_TO_NAME[i] : entries[i] for i in range(len(entries))}
+
+        # get autotag scores in a dict
+        tag_ID, autotag_scores = self._parse_autotags(autotag)
+        if not metadict['ID'] == tag_ID:
+            print("AUTOTAG ID != Photo ID")
+            import pdb; pdb.set_trace()
+        
+        line_number, line_ID = self._parse_line(line_num)
+        if not metadict['ID'] == line_ID:
+            print("LINE ID != Photo ID")
+            import pdb; pdb.set_trace()
+        
+        if exif_line != None:
+            exif_ID, exif_number = self._parse_line(exif_line)
+            if not metadict['ID'] == exif_ID:
+                print("EXIF ID != Photo ID")
+                import pdb; pdb.set_trace()
+        else:
+            exif_number = None
+        
+        hash_value = hash_dict[metadict['ID']]
+        # import pdb; pdb.set_trace()
+        img_dir = os.path.abspath(save_folder)
+        img_path = f"{metadict['ID']}.{metadict['EXT']}"
+
+        metadata = MetadataObject(
+            ID = metadict['ID'],
+            USER_ID = metadict['USER_ID'],
+            NICKNAME = metadict['NICKNAME'], 
+            DATE_TAKEN = metadict['DATE_TAKEN'],
+            DATE_UPLOADED = metadict['DATE_UPLOADED'],
+            DEVICE = metadict['DEVICE'],
+            TITLE = metadict['TITLE'],
+            DESCRIPTION = metadict['DESCRIPTION'],
+            USER_TAGS = metadict['USER_TAGS'],
+            MACHINE_TAGS = metadict['MACHINE_TAGS'],
+            LON = metadict['LON'],
+            LAT = metadict['LAT'],
+            GEO_ACCURACY = metadict['GEO_ACCURACY'],
+            PAGE_URL = metadict['PAGE_URL'],
+            DOWNLOAD_URL = metadict['DOWNLOAD_URL'],
+            LICENSE_NAME = metadict['LICENSE_NAME'],
+            LICENSE_URL = metadict['LICENSE_URL'],
+            SERVER_ID = metadict['SERVER_ID'],
+            FARM_ID = metadict['FARM_ID'],
+            SECRET = metadict['SECRET'],
+            SECRET_ORIGINAL = metadict['SECRET_ORIGINAL'],
+            EXT = metadict['EXT'],
+            IMG_OR_VIDEO = int(metadict['IMG_OR_VIDEO']),
+            AUTO_TAG_SCORES = autotag_scores,
+            LINE_NUM = line_number,
+            HASH_VALUE = hash_value,
+            EXIF = exif_number,
+            IMG_PATH = img_path,
+            IMG_DIR = img_dir,
+        )
+        return metadata
+        
+    def _parse_autotags(self, line):
+        entries = line.strip().split("\t")
+        if len(entries) == 1:
+            tag_scores = {}
+        else:
+            tags = entries[1].split(",")
+            if len(tags) > 0:
+                tag_scores = {t.split(":")[0] : float(t.split(":")[1]) for t in tags}
+            else:
+                tag_scores = {}
+        return entries[0], tag_scores
+
+class Criteria():
+    """Whether or not a media file is valid
+    """
+    def __init__(self, args):
+        self.args = args
+        self.save_folder = None
+        self.pickle_location = None
+    
+    def is_valid(self, metadata : Metadata):
+        raise NotImplementedError()
+    
+    def make_metadata(self, data_line, auto_line, line_num, hash_dict, exif_line, save_folder, absolute_path=True):
+        return Metadata(data_line, auto_line, line_num, hash_dict, save_folder, exif_line=exif_line, absolute_path=absolute_path)
+    
+import time
+running_time = time.time()
+def fetch_and_save_image(img_path, url, MIN_EDGE=0, MAX_ASPECT_RATIO=None, MAX_NUM_OF_TRAILS=3, RUN_TIME=1000, MIN_IMAGE_SIZE=2100):
+    """Return true if image is valid and successfully downloaded
+    """
+    global running_time
+    while True:
+        try:
+            response = requests.get(url)
+            img = Image.open(BytesIO(response.content))
+            if img.size[0] < MIN_EDGE or img.size[1] < MIN_EDGE:
+                return False
+            max_edge = max(img.size[0], img.size[1])
+            min_edge = min(img.size[0], img.size[1])
+            ratio = max_edge / min_edge
+            if MAX_ASPECT_RATIO and ratio > MAX_ASPECT_RATIO:
+                return False
+            img.save(img_path)
+            if os.path.getsize(img_path) < MIN_IMAGE_SIZE:
+                return False
+            return True
+        except:
+            if time.time() - running_time < RUN_TIME:
+                print("Cannot fetch {:s}".format(url))
+                return False
+            else:
+                print("Sleep for a while and try again")
+                print("Sleep for {:d} secs".format(1))
+                time.sleep(1)
+                running_time = time.time()
+                continue
+          
 class AllValidDate(Criteria):
     """Return all valid images
     """
@@ -72,6 +325,8 @@ class AllValidDate(Criteria):
         super().__init__(args)
         self.size_option = args.size_option
         self.min_size = args.min_size
+        self.min_edge = args.min_edge
+        self.max_aspect_ratio = args.max_aspect_ratio
         self.use_valid_date = args.use_valid_date
 
         self.auxilary_info_str = ""
@@ -82,6 +337,10 @@ class AllValidDate(Criteria):
             self.auxilary_info_str += f"_minbyte_{self.min_size}"
         if self.use_valid_date != 0:
             self.auxilary_info_str += f"_valid_uploaded_date"
+        if self.min_edge != 0:
+            self.auxilary_info_str += f"_minedge_{self.min_edge}"
+        if self.max_aspect_ratio != 0:
+            self.auxilary_info_str += f"_maxratio_{self.max_aspect_ratio}"
             
         self.save_folder = os.path.join(args.img_dir, f'images{self.auxilary_info_str}')
         if not os.path.exists(self.save_folder):
@@ -96,8 +355,9 @@ class AllValidDate(Criteria):
             fetch_success = fetch_and_save_image(
                 metadata.get_path(),
                 metadata_obj.DOWNLOAD_URL,
-                MIN_EDGE=0,
-                MIN_IMAGE_SIZE=self.min_size
+                MIN_EDGE=self.min_edge,
+                MIN_IMAGE_SIZE=self.min_size,
+                MAX_ASPECT_RATIO=self.max_aspect_ratio,
             )
             if fetch_success:
                 width, height = imagesize.get(metadata.get_path())
@@ -169,9 +429,6 @@ class FlickrFolder():
     def get_folder_path(self):
         return self.folder
     
-    
-
-
 class FlickrFolderAccessor():
     def __init__(self, flickr_folder):
         self.flickr_folder = flickr_folder
@@ -200,24 +457,8 @@ class FlickrAccessor():
     def __len__(self):
         return self.total_length
 
-# class FlickrAccessorPathOnly():
-#     def __init__(self, folders):
-#         self.flickr_folders = [FlickrFolderAccessor(f) for f in folders]
-
-#         self.total_length = 0
-#         for f in self.flickr_folders:
-#             self.total_length += len(f)
-#             self.imgs = [meta.get_path() for meta in f]
-
-#     def __getitem__(self, idx):
-#         return self.imgs[idx]
-    
-#     def __len__(self):
-#         return self.total_length
-
 def get_flickr_accessor(args, new_folder_path=None):
-    if args.all_images:
-        criteria = AllValidDate(args)
+    criteria = AllValidDate(args)
     
     flickr_parser = FlickrParserBuckets(args, criteria)
     if new_folder_path == None:
@@ -239,7 +480,7 @@ class FlickrParserBuckets():
         self.lines_file = args.lines_file
 
         self.criteria = criteria
-        self.save_folder = criteria.get_save_folder()
+        self.save_folder = criteria.save_folder
         self.main_pickle_location = os.path.join(self.save_folder, "all_folders.pickle")
         
         self.flickr_folders = load_pickle(self.main_pickle_location, default_obj=[])
@@ -336,8 +577,7 @@ class FlickrParserBuckets():
 
 if __name__ == "__main__":
     args = argparser.parse_args()
-    if args.all_images:
-        criteria = AllValidDate(args)
+    criteria = AllValidDate(args)
     
     flickr_parser = FlickrParserBuckets(args, criteria)
     flickr_parser.fetch_images()
