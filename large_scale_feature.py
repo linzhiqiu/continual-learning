@@ -1,6 +1,6 @@
 # A script to parse flickr datasets/autotags
-# Download all: python large_scale_feature.py --all_images --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
-# Download all: python large_scale_feature.py --all_images --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000 --model_name RN50;
+# Download all: python large_scale_feature.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
+# Download all: python large_scale_feature.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000 --model_name RN50;
 
 from io import BytesIO
 import os
@@ -150,17 +150,3 @@ if __name__ == "__main__":
     if not os.path.exists(clip_norm_features_location):
         clip_features_normalized = normalize(clip_features.astype(np.float32))
         save_obj_as_pickle(clip_norm_features_location, clip_features_normalized)
-    # image = preprocess(Image.open(image_path)).unsqueeze(0).to(device)
-    # text = clip.tokenize(["a diagram", "a dog", "a cat"]).to(device)
-    
-    # with torch.no_grad():
-    #     image_features = model.encode_image(image)
-    #     text_features = model.encode_text(text)
-    #     print(image_features.norm())
-    #     print(text_features.size())
-        
-    #     logits_per_image, logits_per_text = model(image, text)
-    #     probs = logits_per_image.softmax(dim=-1).cpu().numpy()
-
-    # print("Label probs:", probs)  # prints: [[0.9927937  0.00421068 0.00299572]]
-    # flickr_dataset = CLIPDataset(Dataset)

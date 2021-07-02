@@ -460,7 +460,7 @@ class FlickrAccessor():
 def get_flickr_accessor(args, new_folder_path=None):
     criteria = AllValidDate(args)
     
-    flickr_parser = FlickrParserBuckets(args, criteria)
+    flickr_parser = FlickrParser(args, criteria)
     if new_folder_path == None:
         folders = flickr_parser.load_folders()
     else:
@@ -469,7 +469,7 @@ def get_flickr_accessor(args, new_folder_path=None):
         
     return FlickrAccessor(folders)
 
-class FlickrParserBuckets():
+class FlickrParser():
     def __init__(self, args, criteria : Criteria):
         self.chunk_size = args.chunk_size
         self.data_file = args.data_file
@@ -579,5 +579,5 @@ if __name__ == "__main__":
     args = argparser.parse_args()
     criteria = AllValidDate(args)
     
-    flickr_parser = FlickrParserBuckets(args, criteria)
+    flickr_parser = FlickrParser(args, criteria)
     flickr_parser.fetch_images()

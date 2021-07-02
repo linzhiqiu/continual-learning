@@ -27,6 +27,23 @@ This repository contains all the code and experiments that appear in our paper f
 
 The code is developed using python 3.8.5. NVIDIA GPUs are needed to train and test. -->
 
+# Workflow
+
+## Download YFCC100M Dataset
+You can start downloading yfcc100m dataset using scripts provided in this repo. You need to have an AWS account (free to register!) first and enter your access key via:
+```
+  s3cmd --configure
+```
+And then you can download yfcc100M metadata to this folder by running:
+```
+  sh install_yfcc100m.sh
+```
+To start downloading the YFCC100M images, we provide this python script:
+```
+  python large_scale_yfcc_download.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
+```
+The above script will download the Flickr images with (1) byte size larger than 10, (2) shorter edge larger than 120px, (3) maximum aspect ratio larger than 2 into /data3/zhiqiul. It will split images to multiple subfolders, each containing 10000 (--chunk_size) images. In the meantime, a pickle file will be saved at all_folders.pickle under img_dir. This pickle file after loading is a FlickrFolder() object (see [large_scale_yfcc_download.py](large_scale_yfcc_download.py) for details). All images you downloaded as well as their respective metadata can be accessed by this object.
+
 <!-- #### Learning Results with random cropping
 
 With **random cropping**, we can still train network to predict random horizontal reflections on Bayer-demosaiced + JPEG compressed randomly generated gaussian images. We use a cropping size of 512, and in order to eliminate the chance of the network cheating by utilizing the boundary of images (e.g., JPEG edge artifacts), we crop from the center (544, 544) of (576, 576) images. The results again followed our prediction in paper, and they are shown in the following table:

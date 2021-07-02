@@ -7,7 +7,7 @@ from faiss_utils import get_flickr_folder
 import time
 from datetime import datetime
 
-from large_scale_feature import FlickrAccessor, FlickrFolder, get_flickr_accessor
+from large_scale_yfcc_download import FlickrAccessor, FlickrFolder, get_flickr_accessor
 import argparse
 import importlib
 from utils import divide, load_pickle, save_obj_as_pickle

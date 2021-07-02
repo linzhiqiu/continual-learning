@@ -1,2 +1,0 @@
-"['computer (laptop/desktop/keyboard/etc.)', 'camera (digital/film)', 'bus (interior/exterior)', 'sweater (wearing or not)', 'shirt (t-shirt/polo shirt)', 'racing (car)', 'hockey (ice/field)',
-"['computer', 'camera', 'bus', 'sweater', 'shirt', 'racing', 'hockey', 'cosplay', 'baseball', 'tennis']"
