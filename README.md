@@ -44,6 +44,17 @@ To start downloading the YFCC100M images, we provide this python script:
 ```
 The above script will download the Flickr images with (1) byte size larger than 10, (2) shorter edge larger than 120px, (3) maximum aspect ratio larger than 2 into /data3/zhiqiul. It will split images to multiple subfolders, each containing 10000 (--chunk_size) images. In the meantime, a pickle file will be saved at all_folders.pickle under img_dir. This pickle file after loading is a FlickrFolder() object (see [large_scale_yfcc_download.py](large_scale_yfcc_download.py) for details). All images you downloaded as well as their respective metadata can be accessed by this object.
 
+The downloading speed is not yet optimized, but the all_folders.pickle will be updated after downloading every (--chunk_size) images.
+
+## Segment the temporal stream + CLIP feature extraction
+
+You can start recreate the temporal (uploading) stream of YFCC100M images for already downloaded images from last step, and split these YFCC100M images into a fixed number of buckets with equal size. After splitting the sorted stream into segments, you can generate the CLIP features for each images. These step can by done:
+```
+  python prepare_dataset.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50x4
+```
+Note that the above script keeps the same arguments from the downloading step. Additionally, you can specify the number of segments to split by (--num_of_bucket) flag, and the CLIP model used for feature extraction by (--model_name) flag. At this moment, 'RN50', 'RN50x4', 'RN101', and 'ViT-B/32' are available. 'RN50x4' seems to be the best available model. You should check whether OpenAI released new pre-trained models in their [repo](https://github.com/openai/CLIP).
+
+
 <!-- #### Learning Results with random cropping
 
 With **random cropping**, we can still train network to predict random horizontal reflections on Bayer-demosaiced + JPEG compressed randomly generated gaussian images. We use a cropping size of 512, and in order to eliminate the chance of the network cheating by utilizing the boundary of images (e.g., JPEG edge artifacts), we crop from the center (544, 544) of (576, 576) images. The results again followed our prediction in paper, and they are shown in the following table:

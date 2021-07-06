@@ -14,11 +14,11 @@ from utils import divide, load_pickle, save_obj_as_pickle
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--folder_path", 
-                        # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_25',
-                        # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_31',
-                        # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_16',
-                        default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18',
-                        help="The folder with all_folders.pickle and features.pickle")
+                       # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_25',
+                       # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_31',
+                       # default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_16',
+                       default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18',
+                       help="The folder with all_folders.pickle and features.pickle")
 argparser.add_argument('--num_of_bucket', default=11, type=int,
                        help='number of bucket')
 

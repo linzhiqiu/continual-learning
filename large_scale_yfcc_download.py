@@ -1,6 +1,6 @@
 # A script to parse flickr datasets/autotags
 # Download all with valid date and min byte 10: python large_scale_yfcc_download.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
-# Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120: python large_scale_yfcc_download.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
+# Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120: python large_scale_yfcc_download.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
 from io import BytesIO
 import os
 import json
@@ -9,6 +9,7 @@ import argparse
 from dataclasses import dataclass
 import time
 from PIL import Image
+import subprocess
 import requests
 from tqdm import tqdm
 import pickle
@@ -21,7 +22,7 @@ from utils import save_obj_as_pickle, load_pickle
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--img_dir", 
-                        default='/project_data/ramanan/yfcc100m_all',
+                        default='/data3/zhiqiul/yfcc100m_all_new/',
                         help="Yfcc100M dataset will be downloaded at this location")
 argparser.add_argument("--data_file", 
                         default='./yfcc100m/yfcc100m_dataset',
@@ -405,6 +406,7 @@ class FlickrFolder():
             return
 
         cp_script = f'cp -r {self.image_folder}/. {new_image_folder}'
+        # cp_script = f'rsync -a {self.image_folder}/. {new_image_folder}'
         subprocess.call(cp_script, shell=True)
         print(f"Done {cp_script}")
 
