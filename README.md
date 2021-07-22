@@ -61,7 +61,10 @@ You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After
 ```
   python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.pickle --model_folder /data3/zhiqiul/yfcc_moco_models/july_6_bucket_11_idx_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 ```
-The above script requires 8 GPUs. You can shrink the batch size if you have fewer available GPUs. Optionally, you can use the pre-trained models provided (how to we provide the dataset/moco models efficiently?).
+The above script requires 8 GPUs. You can shrink the batch size if you have fewer available GPUs. Optionally, you can use the pre-trained models provided (TODO: how do we provide the dataset/moco models efficiently?).
+
+## Image Retrieval with CLIP
+Once you download the dataset and run the above scripts to extract the CLIP features, you can use a jupyter notebook ([CLIP-PromptEngineering.ipynb](CLIP-PromptEngineering.ipynb)) to perform image retrival and try out your favorite prompts! Please follow the instruction in the notebook and change the folder paths to your local directories. 
 <!-- #### Learning Results with random cropping
 
 With **random cropping**, we can still train network to predict random horizontal reflections on Bayer-demosaiced + JPEG compressed randomly generated gaussian images. We use a cropping size of 512, and in order to eliminate the chance of the network cheating by utilizing the boundary of images (e.g., JPEG edge artifacts), we crop from the center (544, 544) of (576, 576) images. The results again followed our prediction in paper, and they are shown in the following table:
