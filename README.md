@@ -54,7 +54,14 @@ You can start recreate the temporal (uploading) stream of YFCC100M images for al
 ```
 Note that the above script keeps the same arguments from the downloading step. Additionally, you can specify the number of segments to split by (--num_of_bucket) flag, and the CLIP model used for feature extraction by (--model_name) flag. At this moment, 'RN50', 'RN50x4', 'RN101', and 'ViT-B/32' are available. 'RN50x4' seems to be the best available model. You should check whether OpenAI released new pre-trained models in their [repo](https://github.com/openai/CLIP).
 
+If you need want to transfer the downloaded files to another folder before you start running any experiments, you can specify the (--new_folder_path) flag. The reason that you must use this script to transfer the folder is because you cannot simply copy the downloaded folders: The metadata objects contain absolute paths to the image files. Check out the comments in [prepare_dataset.py](prepare_dataset.py) for more details.
 
+## MoCo V2 Pre-training
+You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After running the above steps, you can specify a segment of the temporal YFCC100 image stream to pre-train a MoCo V2 model. For more details about training MoCo, please refer to their [official repository](https://github.com/facebookresearch/moco). For example, you can pre-train a MoCo model using the 0th segment from the previous step using MoCo V2's default hyperparameters by running the below script:
+```
+  python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.pickle --model_folder /data3/zhiqiul/yfcc_moco_models/july_6_bucket_11_idx_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
+```
+The above script requires 8 GPUs. You can shrink the batch size if you have fewer available GPUs. Optionally, you can use the pre-trained models provided (how to we provide the dataset/moco models efficiently?).
 <!-- #### Learning Results with random cropping
 
 With **random cropping**, we can still train network to predict random horizontal reflections on Bayer-demosaiced + JPEG compressed randomly generated gaussian images. We use a cropping size of 512, and in order to eliminate the chance of the network cheating by utilizing the boundary of images (e.g., JPEG edge artifacts), we crop from the center (544, 544) of (576, 576) images. The results again followed our prediction in paper, and they are shown in the following table:

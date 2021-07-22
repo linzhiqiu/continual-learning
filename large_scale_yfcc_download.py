@@ -1,6 +1,7 @@
 # A script to parse flickr datasets/autotags
 # Download all with valid date and min byte 10: python large_scale_yfcc_download.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
 # Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120: python large_scale_yfcc_download.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
+# Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120: python large_scale_yfcc_download.py --img_dir /scratch/zhiqiu/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
 from io import BytesIO
 import os
 import json
@@ -48,7 +49,6 @@ argparser.add_argument("--size_option",
 argparser.add_argument("--chunk_size",
                         type=int, default=10000,
                         help="The number of images to store in each subfolder")
-
 argparser.add_argument("--max_aspect_ratio",
                        type=float, default=0,
                        help="If not 0: Images with aspect ratio larger than max_aspect_ratio will be ignored.")
@@ -443,6 +443,9 @@ class FlickrFolderAccessor():
         return len(self.metadata_list)
 
 class FlickrAccessor():
+    """
+    Wrap around a list of FlickrFolder object in order to access image metadata as a single list
+    """
     def __init__(self, folders):
         self.flickr_folders = [FlickrFolderAccessor(f) for f in folders]
 
@@ -460,9 +463,7 @@ class FlickrAccessor():
         return self.total_length
 
 def get_flickr_accessor(args, new_folder_path=None):
-    criteria = AllValidDate(args)
-    
-    flickr_parser = FlickrParser(args, criteria)
+    flickr_parser = get_flickr_parser(args)
     if new_folder_path == None:
         folders = flickr_parser.load_folders()
     else:
@@ -471,7 +472,21 @@ def get_flickr_accessor(args, new_folder_path=None):
         
     return FlickrAccessor(folders)
 
+def get_flickr_parser(args):
+    criteria = AllValidDate(args)
+    flickr_parser = FlickrParser(args, criteria)
+    return flickr_parser
+
+def get_flickr_folder_location(args, new_folder_path=None):
+    if new_folder_path == None:
+        return get_flickr_parser(args).save_folder
+    else:
+        return new_folder_path
+
 class FlickrParser():
+    """
+    Parse Flickr dataset files, in order to download images
+    """
     def __init__(self, args, criteria : Criteria):
         self.chunk_size = args.chunk_size
         self.data_file = args.data_file

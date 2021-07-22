@@ -1,9 +1,5 @@
 #!/usr/bin/env python
-#  First run: python prepare_yfcc_dataset.py --num_of_bucket 11 --folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18
-# 4 GPUs: python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/bucket_11/0/bucket_0.pickle --model_folder /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_4/ --arch resnet50 -j 32 --lr 0.015 --batch-size 128 --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
-# 4 GPUs last bucket: python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/bucket_11/10/bucket_10.pickle --model_folder /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_10_gpu_4/ --arch resnet50 -j 32 --lr 0.015 --batch-size 128 --dist-url 'tcp://localhost:10011' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
-# 8 GPUs: python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/bucket_11/0/bucket_0.pickle --model_folder /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
-# 8 GPUs last bucket: python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/bucket_11/10/bucket_10.pickle --model_folder /project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_10_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10024' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
+# You will need 4 GPUs for the below script: python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.pickle --model_folder /data3/zhiqiul/yfcc_moco_models/july_10_bucket_11_idx_0_gpu_4/ --arch resnet50 -j 32 --lr 0.03 --batch-size 128 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 import argparse
 import builtins
 import math
@@ -14,7 +10,6 @@ import time
 import warnings
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
-import flickr_parsing
 
 import torch
 import torch.nn as nn

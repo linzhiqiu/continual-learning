@@ -1,11 +1,23 @@
-# First transfer the folder to another location if needed
-# Next generate the CLIP features (normalized + unnormalized)
-# Next split the dataset to buckets sorted by time
+# First transfer the folder to another location (optional, unless change the --new_folder_path flag)
+# Then split the dataset to buckets sorted by time
+# Finally generate and save the CLIP features (normalized + unnormalized)
 
-# Example: python prepare_dataset.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --new_folder_path images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0_july_5;
+# Example (with --new_folder_path): python prepare_dataset.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --new_folder_path images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0_july_5 --num_of_bucket 11 --model_name RN50;
+# Example (without transfer to --new_folder_path): python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50;
+
+# July 7 (so far around 3M images july 19): python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_july_7 --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50;
+
+# prepare features for older folders (feb 18 and jan 31)
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all --min_size 10 --chunk_size 10000 --num_of_bucket 11 --model_name RN50 --new_folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18;
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all --min_size 10 --chunk_size 10000 --num_of_bucket 11 --model_name RN50x4 --new_folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18;
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all --min_size 10 --chunk_size 10000 --num_of_bucket 11 --model_name RN101 --new_folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18;
+
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all --min_size 10 --chunk_size 10000 --num_of_bucket 11 --model_name RN50 --new_folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_31;
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all --min_size 10 --chunk_size 10000 --num_of_bucket 11 --model_name RN50x4 --new_folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_31;
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all --min_size 10 --chunk_size 10000 --num_of_bucket 11 --model_name RN101 --new_folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_jan_31;
+
 import os
 import time
-from faiss_utils import get_flickr_folder
 
 import argparse
 
@@ -20,12 +32,15 @@ import torchvision.models as models
 from torchvision.datasets.folder import default_loader
 import sys
 sys.path.append("./CLIP")
-
+from faiss_utils import KNearestFaissFeatureChunks
 import clip
-from large_scale_yfcc_download import Metadata, Criteria, MetadataObject, argparser, FlickrAccessor, FlickrFolder, get_flickr_accessor
+from large_scale_yfcc_download import Metadata, Criteria, MetadataObject, argparser, FlickrAccessor, FlickrFolder, get_flickr_accessor, get_flickr_folder_location
 from utils import divide, load_pickle, save_obj_as_pickle, normalize
 from training_utils import get_imgnet_transforms
 
+MAX_SIZE = 500000 # The maximum number of features to store in a single file. You may adjust it according to your CPU memory.
+BATCH_SIZE = 128 # The batch size used for extracting features. Adjust it according to your GPU memory
+device = "cuda"
 
 # Continue the argparser in large_scale_yfcc_download
 argparser.add_argument("--new_folder_path", 
@@ -38,6 +53,33 @@ argparser.add_argument("--model_name",
                        default='RN50', choices=clip.available_models(),
                        help="The CLIP model architecture to use")
 
+def get_knearest_models_func(folder_path, clip_model_name, num_of_bucket, model, preprocess):
+    folder_paths = get_bucket_folder_paths(folder_path, num_of_bucket)
+    def knearest_func(bucket_idx):
+        clip_features_normalized_paths = get_clip_features_normalized_paths(folder_paths[bucket_idx], clip_model_name)
+        k_near_faiss = KNearestFaissFeatureChunks(clip_features_normalized_paths, model, preprocess)
+        return k_near_faiss
+    return knearest_func
+
+def get_clip_features_normalized_paths(f_path, model_name):
+    """A helper function to return paths to normalized clip features
+    """
+    clip_features_normalized_paths = []
+    main_pickle_location = get_main_save_location(f_path, model_name)
+    print(main_pickle_location)
+    if os.path.exists(main_pickle_location):
+        chunks, path_dict_list = load_pickle(main_pickle_location)
+        print(f"Loaded from {main_pickle_location}")
+    else:
+        import pdb; pdb.set_trace()
+
+    for chunk, path_dict in zip(chunks, path_dict_list):
+        if os.path.exists(path_dict['normalized']):
+            print(f"Already exists: {path_dict['normalized']}")
+            clip_features_normalized_paths.append(path_dict['normalized'])
+        else:
+            import pdb; pdb.set_trace()
+    return clip_features_normalized_paths
 
 def get_bucket_folder_paths(folder_path, num_of_bucket):
     sub_folder_paths = []
@@ -48,10 +90,16 @@ def get_bucket_folder_paths(folder_path, num_of_bucket):
             os.makedirs(sub_folder_path)
     return sub_folder_paths
 
-def get_date_uploaded(date_uploaded):
+def get_main_save_location(folder_path, model_name):
+    main_save_location = os.path.join(
+        folder_path, f"features_{model_name.replace(os.sep, '_')}.pickle")
+    return main_save_location
+
+
+def _get_date_uploaded(date_uploaded):
     return datetime.utcfromtimestamp(int(date_uploaded))
 
-def divide_meta_list(bucket_dict_i, sub_folder, MAX_SIZE=MAX_SIZE):
+def _divide_meta_list(bucket_dict_i, sub_folder, MAX_SIZE=MAX_SIZE):
     # Divide the metadata list into chunks with maximum size being MAX_SIZE
     # Return a list of chunks and save path for each dict
     meta_list = bucket_dict_i['flickr_accessor']
@@ -61,16 +109,12 @@ def divide_meta_list(bucket_dict_i, sub_folder, MAX_SIZE=MAX_SIZE):
     assert len(chunks) == len(names)
     return chunks, names
 
-def get_main_save_location(folder_path, model_name):
-    main_save_location = os.path.join(
-        folder_path, f"features_{model_name.replace(os.sep, '_')}.pickle")
-    return main_save_location
 
-def get_sub_feature_paths(bucket_dict_i, folder_path, main_save_location, model_name, MAX_SIZE=MAX_SIZE):
+def _get_sub_feature_paths(bucket_dict_i, folder_path, main_save_location, model_name, MAX_SIZE=MAX_SIZE):
     sub_folder = os.path.join(folder_path, f"features_{model_name.replace(os.sep, '_')}")
     if not os.path.exists(sub_folder):
         os.makedirs(sub_folder)
-    chunks, names = divide_meta_list(bucket_dict_i, sub_folder, MAX_SIZE=MAX_SIZE)
+    chunks, names = _divide_meta_list(bucket_dict_i, sub_folder, MAX_SIZE=MAX_SIZE)
     
     path_dict_list = [{'original': n+"_original.pickle",
                        "normalized": n+"_normalized.pickle"} for n in names]
@@ -88,7 +132,7 @@ class CLIPDataset(Dataset):
         return len(self.flickr_accessor)
     
     def __getitem__(self,index):
-        path = self.flickr_accessor[index].metadata.IMG_PATH
+        path = self.flickr_accessor[index].get_path()
         sample = self.preprocess(Image.open(path)).to(self.device)
         return sample
 
@@ -109,44 +153,61 @@ def get_clip_features(clip_loader, model):
             clip_features.append(image_features.cpu().numpy())
     return np.concatenate(clip_features, axis=0)
 
-if __name__ == '__main__':
-    args = argparser.parse_args()
-    start = time.time()
-    flickr_accessor = get_flickr_accessor(args, new_folder_path=args.new_folder_path)
-    end = time.time()
-    print(f"{end - start} seconds are used to load all {len(flickr_accessor)} images")
-    print(f"Size of dataset is {len(flickr_accessor)}")
-    
+def load_bucket_dict(flickr_folder_location, num_of_bucket):
+    bucket_dict_path = os.path.join(flickr_folder_location, f'bucket_{num_of_bucket}.pickle')
+    bucket_dict = load_pickle(bucket_dict_path)
+    return bucket_dict
+
+def save_bucket_dict(flickr_folder_location, flickr_accessor, folder_paths, num_of_bucket):
+    assert num_of_bucket == len(folder_paths)
     # Sort images by time, and then split into buckets
     date_uploaded_list = []
     for meta in flickr_accessor:
         metadata_obj = meta.get_metadata()
         date_uploaded_list.append(metadata_obj.DATE_UPLOADED)
     date_uploaded_indices = [i[0] for i in sorted(enumerate(date_uploaded_list), key=lambda x : x[1])]
-    sorted_indices_chunks = divide(date_uploaded_indices, args.num_of_bucket)
+    sorted_indices_chunks = divide(date_uploaded_indices, num_of_bucket)
+    
+    bucket_dict_path = os.path.join(flickr_folder_location, f'bucket_{num_of_bucket}.pickle')
+    bucket_dict = load_pickle(bucket_dict_path)
+    if not bucket_dict:
+        bucket_dict = {}
+        for i, sorted_indices_chunk in enumerate(sorted_indices_chunks):
+            bucket_dict_i_path = os.path.join(folder_paths[i], f'bucket_{i}.pickle')
+            if os.path.exists(bucket_dict_i_path):
+                bucket_dict[i] = load_pickle(bucket_dict_i_path)
+            else:
+                meta_list = [flickr_accessor[i] for i in sorted_indices_chunk]
+                date_uploaded_list_i = [date_uploaded_list[i] for i in sorted_indices_chunk]
+                bucket_dict[i] = {
+                    'indices' : sorted_indices_chunk,
+                    'flickr_accessor' : meta_list,
+                    'folder_path' : folder_paths[i],
+                    'min_date': _get_date_uploaded(date_uploaded_list_i[0]),
+                    'max_date': _get_date_uploaded(date_uploaded_list_i[-1]),
+                    'date_uploaded_list' : date_uploaded_list_i
+                }
+                save_obj_as_pickle(bucket_dict_i_path, bucket_dict[i])
+            min_date, max_date = bucket_dict[i]['min_date'], bucket_dict[i]['max_date']
+            date_str = f"For bucket {i}: Date range from {min_date} to {max_date}"
+            print(date_str)
+        
+        save_obj_as_pickle(bucket_dict_path, bucket_dict)
+    return bucket_dict
+
+if __name__ == '__main__':
+    args = argparser.parse_args()
+    start = time.time()
+    flickr_folder_location = get_flickr_folder_location(args, new_folder_path=args.new_folder_path)
+    flickr_accessor = get_flickr_accessor(args, new_folder_path=args.new_folder_path)
+    end = time.time()
+    print(f"{end - start} seconds are used to load all {len(flickr_accessor)} images")
+    print(f"Size of dataset is {len(flickr_accessor)}")
     
     # Save each bucket into a pickle object
-    bucket_dict = {}
-    folder_paths = get_bucket_folder_paths(args.folder_path, args.num_of_bucket)
-    for i, sorted_indices_chunk in enumerate(sorted_indices_chunks):
-        min_date, max_date = date_uploaded_list[sorted_indices_chunk[0]], date_uploaded_list[sorted_indices_chunk[-1]]
-        date_str = f"For bucket {i}: Date range from {get_date_uploaded(min_date)} to {get_date_uploaded(max_date)}"
-        print(date_str)
-        
-        meta_list = [flickr_accessor[i] for i in sorted_indices_chunk]
-        
-        bucket_dict[i] = {
-            'indices' : sorted_indices_chunk,
-            'flickr_accessor' : meta_list,
-            'folder_path' : folder_paths[i],
-            'min_date': get_date_uploaded(min_date),
-            'max_date': get_date_uploaded(max_date),
-            'date_uploaded_list' : [date_uploaded_list[i] for i in sorted_indices_chunk]
-        }
-        save_obj_as_pickle(os.path.join(folder_paths[i], f'bucket_{i}.pickle'), bucket_dict[i])
-    
-    bucket_dict_path = os.path.join(args.folder_path, f'bucket_{args.num_of_bucket}.pickle')
-    save_obj_as_pickle(bucket_dict_path, bucket_dict)
+    folder_paths = get_bucket_folder_paths(flickr_folder_location, args.num_of_bucket)
+    bucket_dict = save_bucket_dict(flickr_folder_location, flickr_accessor, folder_paths, args.num_of_bucket)
+    # If you want to load the bucket_dict, use load_bucket_dict(flickr_folder_location, args.num_of_bucket)
     
     length_of_dataset = 0
     for i in bucket_dict:
@@ -155,6 +216,8 @@ if __name__ == '__main__':
 
     # Extract and save the CLIP features
     print(f"Using CLIP pre-trained model {args.model_name}")
+    model, preprocess = clip.load(args.model_name, device=device)
+    # model.visual = torch.nn.DataParallel(model.visual)
     for i, folder_path in enumerate(folder_paths):
         main_pickle_location = get_main_save_location(folder_path, args.model_name)
         print(main_pickle_location)
@@ -162,15 +225,20 @@ if __name__ == '__main__':
             chunks, path_dict_list = load_pickle(main_pickle_location)
             print(f"Loaded from {main_pickle_location}")
         else:
-            chunks, path_dict_list = get_sub_feature_paths(
+            chunks, path_dict_list = _get_sub_feature_paths(
                 bucket_dict[i], folder_path, main_pickle_location, model_name=args.model_name)
-        
-        model, preprocess = clip.load(args.model_name, device=device)
+        # import pdb; pdb.set_trace()
         for chunk, path_dict in zip(chunks, path_dict_list):
             if os.path.exists(path_dict['normalized']) and os.path.exists(path_dict['original']):
                 print(f"Already exists: {path_dict['normalized']}")
                 continue
+            else:
+                print(f"Save to {path_dict['normalized']}")
             clip_loader = get_clip_loader(chunk, preprocess, dataset_class=CLIPDataset)
+            # try:
+            #     clip_features = get_clip_features(clip_loader, model)
+            # except:
+            #     import pdb; pdb.set_trace()
             clip_features = get_clip_features(clip_loader, model)
             
             save_obj_as_pickle(path_dict['original'], clip_features)
