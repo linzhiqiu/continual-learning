@@ -65,6 +65,9 @@ The above script requires 8 GPUs. You can shrink the batch size if you have fewe
 
 ## Image Retrieval with CLIP
 Once you download the dataset and run the above scripts to extract the CLIP features, you can use a jupyter notebook ([CLIP-PromptEngineering.ipynb](CLIP-PromptEngineering.ipynb)) to perform image retrival and try out your favorite prompts! Please follow the instruction in the notebook and change the folder paths to your local directories. 
+
+## Image Retrieval with a group of visual concepts
+TODO: Finish refactoring and writing the instruction (Zhiqiu).
 <!-- #### Learning Results with random cropping
 
 With **random cropping**, we can still train network to predict random horizontal reflections on Bayer-demosaiced + JPEG compressed randomly generated gaussian images. We use a cropping size of 512, and in order to eliminate the chance of the network cheating by utilizing the boundary of images (e.g., JPEG edge artifacts), we crop from the center (544, 544) of (576, 576) images. The results again followed our prediction in paper, and they are shown in the following table:
