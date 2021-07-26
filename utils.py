@@ -42,16 +42,17 @@ def save_obj_as_pickle(pickle_location, obj):
 
 def load_pickle(pickle_location, default_obj=None):
     if os.path.exists(pickle_location):
-        try:
-            return pickle.load(open(pickle_location, 'rb'))
-        except ModuleNotFoundError:
-            # Hack to remove a no longer existed module
-            import sys, large_scale_yfcc_download
-            sys.modules['flickr_parsing'] = large_scale_yfcc_download
-            a = pickle.load(open(pickle_location, 'rb'))
-            del sys.modules['flickr_parsing']
-            save_obj_as_pickle(pickle_location, a)
-            # import pdb; pdb.set_trace()
-            return pickle.load(open(pickle_location, 'rb'))
+        return pickle.load(open(pickle_location, 'rb'))
+        # try:
+        #     return pickle.load(open(pickle_location, 'rb'))
+        # except ModuleNotFoundError:
+        #     # Hack to remove a no longer existed module
+        #     import sys, large_scale_yfcc_download
+        #     sys.modules['flickr_parsing'] = large_scale_yfcc_download
+        #     a = pickle.load(open(pickle_location, 'rb'))
+        #     del sys.modules['flickr_parsing']
+        #     save_obj_as_pickle(pickle_location, a)
+        #     # import pdb; pdb.set_trace()
+        #     return pickle.load(open(pickle_location, 'rb'))
     else:
         return default_obj

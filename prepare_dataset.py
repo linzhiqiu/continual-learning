@@ -169,30 +169,33 @@ def save_bucket_dict(flickr_folder_location, flickr_accessor, folder_paths, num_
     sorted_indices_chunks = divide(date_uploaded_indices, num_of_bucket)
     
     bucket_dict_path = os.path.join(flickr_folder_location, f'bucket_{num_of_bucket}.pickle')
-    bucket_dict = load_pickle(bucket_dict_path)
-    if not bucket_dict:
-        bucket_dict = {}
-        for i, sorted_indices_chunk in enumerate(sorted_indices_chunks):
-            bucket_dict_i_path = os.path.join(folder_paths[i], f'bucket_{i}.pickle')
-            if os.path.exists(bucket_dict_i_path):
-                bucket_dict[i] = load_pickle(bucket_dict_i_path)
-            else:
-                meta_list = [flickr_accessor[i] for i in sorted_indices_chunk]
-                date_uploaded_list_i = [date_uploaded_list[i] for i in sorted_indices_chunk]
-                bucket_dict[i] = {
-                    'indices' : sorted_indices_chunk,
-                    'flickr_accessor' : meta_list,
-                    'folder_path' : folder_paths[i],
-                    'min_date': _get_date_uploaded(date_uploaded_list_i[0]),
-                    'max_date': _get_date_uploaded(date_uploaded_list_i[-1]),
-                    'date_uploaded_list' : date_uploaded_list_i
-                }
-                save_obj_as_pickle(bucket_dict_i_path, bucket_dict[i])
-            min_date, max_date = bucket_dict[i]['min_date'], bucket_dict[i]['max_date']
-            date_str = f"For bucket {i}: Date range from {min_date} to {max_date}"
-            print(date_str)
-        
+    # print(f"Try loading from {bucket_dict_path}")
+    # bucket_dict = load_pickle(bucket_dict_path)
+    # if not bucket_dict:
+    bucket_dict = {}
+    for i, sorted_indices_chunk in enumerate(sorted_indices_chunks):
+        bucket_dict_i_path = os.path.join(folder_paths[i], f'bucket_{i}.pickle')
+        if os.path.exists(bucket_dict_i_path):
+            bucket_dict[i] = load_pickle(bucket_dict_i_path)
+        else:
+            meta_list = [flickr_accessor[i] for i in sorted_indices_chunk]
+            date_uploaded_list_i = [date_uploaded_list[i] for i in sorted_indices_chunk]
+            bucket_dict[i] = {
+                'indices' : sorted_indices_chunk,
+                'flickr_accessor' : meta_list,
+                'folder_path' : folder_paths[i],
+                'min_date': _get_date_uploaded(date_uploaded_list_i[0]),
+                'max_date': _get_date_uploaded(date_uploaded_list_i[-1]),
+                'date_uploaded_list' : date_uploaded_list_i
+            }
+            save_obj_as_pickle(bucket_dict_i_path, bucket_dict[i])
+        min_date, max_date = bucket_dict[i]['min_date'], bucket_dict[i]['max_date']
+        date_str = f"For bucket {i}: Date range from {min_date} to {max_date}"
+        print(date_str)
+    if not os.path.exists(bucket_dict_path):    
         save_obj_as_pickle(bucket_dict_path, bucket_dict)
+    else:
+        print(f"{bucket_dict_path} already exists")
     return bucket_dict
 
 if __name__ == '__main__':
