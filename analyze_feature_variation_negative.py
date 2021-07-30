@@ -100,29 +100,6 @@ NEG_DICT = {
         'negative_ratio': 0.1,  # The ratio of negative samples per class to keep
         'discard_overlap': True,
     },
-    # 'dynamic_negative_600_hoodies': {
-    #     'positive': {
-    #         'label_set': 'dynamic_hoodies',
-    #         'model_name': 'RN50',
-    #         'query_title': 'none',
-    #         'class_size': 600,
-    #         'avoid_multiple_class': True,
-    #         'nn_size': 16000,
-    #         'reverse_order':  False
-    #     },
-    #     'negative': {
-    #         'label_set': 'dynamic_hoodies',
-    #         'model_name': 'RN50',
-    #         'query_title': 'none',
-    #         'class_size': 600,
-    #         'avoid_multiple_class': True,
-    #         'nn_size': 16000,
-    #         'reverse_order':  True
-    #     },
-    #     'single_negative_class': True,  # put all negative classes into one class
-    #     'negative_ratio': 0.1,  # The ratio of negative samples per class to keep
-    #     'discard_overlap': True,
-    # },
     'dynamic_negative_600_dress_soccer': {
         'positive': {
             'label_set': 'dynamic_dress_soccer',
@@ -146,68 +123,9 @@ NEG_DICT = {
         'negative_ratio': 0.1,  # The ratio of negative samples per class to keep
         'discard_overlap': True,
     },
-    # 'dynamic_negative_3000' : {
-    #     'positive' : {
-    #         'label_set' : 'dynamic',
-    #         'model_name' : 'RN50',
-    #         'query_title' : 'none',
-    #         'class_size' : 300,
-    #         'avoid_multiple_class' : True,
-    #         'nn_size' : 8000,
-    #         'reverse_order':  False
-    #     },
-    #     'negative' : {
-    #         'label_set' : 'dynamic',
-    #         'model_name' : 'RN50',
-    #         'query_title' : 'none',
-    #         'class_size' : 300,
-    #         'avoid_multiple_class' : True,
-    #         'nn_size' : 8000,
-    #         'reverse_order':  True
-    #     },
-    #     'single_negative_class' : True, # put all negative classes into one class
-    #     'negative_ratio' : 1.0, # The ratio of negative samples per class to keep
-    # },
 }
 
 NEGATIVE_LABEL_SETS = list(NEG_DICT.keys())
-
-# argparser = argparse.ArgumentParser()
-# Below are in large_scale_feature_chunks already
-# argparser.add_argument("--model_name", 
-#                         default='RN50', choices=clip.available_models(),
-#                         help="The CLIP model to use")
-# argparser.add_argument("--folder_path", 
-#                         default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18',
-#                         help="The folder with all the computed+normalized CLIP + Moco features got by large_scale_features_chunk.py")
-# argparser.add_argument('--num_of_bucket', default=11, type=int,
-#                        help='number of bucket')
-# argparser.add_argument("--moco_model",
-#                        default='',
-#                        help="The moco model to use")
-# argparser.add_argument('--arch', metavar='ARCH', default='resnet50',
-#                        help='model architecture: ' +
-#                        ' (default: resnet50)')
-# argparser.add_argument("--query_title", 
-#                         default='photo', 
-#                         choices=QUERY_TITLE_DICT.keys(),
-#                         help="The query title")
-# argparser.add_argument('--class_size', default=2000, type=int,
-#                        help='number of (max score) samples per class per bucket')
-# argparser.add_argument("--avoid_multiple_class",
-#                        action='store_true',
-#                        help="Only keep the max scoring images if set True")
-# argparser.add_argument("--reverse_order",
-#                        action='store_true',
-#                        help="Use the min scoring images if set True")
-# argparser.add_argument("--nn_size",
-#                        default=2048, type=int,
-#                        help="If avoid_multiple_class set to True, then first retrieve this number of top score images, and filter out duplicate")
-argparser.add_argument("--negative_label_set", 
-                        default='dynamic_negative_300', 
-                        choices=NEG_DICT.keys(),
-                        help="The name of this composed dataset with negative samples")
-
 
 def get_negative_dataset_folder_paths(folder_path, num_of_bucket):
     main_dataset_dir = os.path.join(
