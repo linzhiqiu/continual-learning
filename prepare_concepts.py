@@ -11,6 +11,7 @@ import numpy as np
 import time
 from datetime import datetime
 from tqdm import tqdm
+import shutil
 
 import argparse
 import prepare_dataset
@@ -247,95 +248,93 @@ if __name__ == '__main__':
     dataset_dict_save_path = get_dataset_dict_path(cg)
     if os.path.exists(dataset_dict_save_path):
         print(f"{dataset_dict_save_path} already exists.")
-        exit(0)
-    
-    
-    print(f"Collecting images for {get_dataset_name(cg)}.. ")
-    labels = cg['GROUP']
-    num_of_labels = len(labels)
-    print(f"We have {num_of_labels} classes in total.")
-    if not cg['PREFIX'] == "":
-        print(f"Adding prefix {cg['PREFIX']} to all classes")
-    prompts = {label: cg['PREFIX'] + label for label in labels}
+        dataset_dict = load_pickle(dataset_dict_save_path)
+    else:
+        dataset_dict = {}
+        print(f"Collecting images for {get_dataset_name(cg)}.. ")
+        labels = cg['GROUP']
+        num_of_labels = len(labels)
+        print(f"We have {num_of_labels} classes in total.")
+        if not cg['PREFIX'] == "":
+            print(f"Adding prefix {cg['PREFIX']} to all classes")
+        prompts = {label: cg['PREFIX'] + label for label in labels}
 
-    prepare_dataset_folder(cg) # prepare dataset folder if not exists
+        prepare_dataset_folder(cg) # prepare dataset folder if not exists
 
-    bucket_dict = prepare_dataset.load_bucket_dict(cg['FOLDER_PATH'], cg['NUM_OF_BUCKETS'])
-    
-    dataset_dict = {}
-    model, preprocess = clip.load(cg['CLIP_MODEL'], device='cpu')
-    k_nearest_func = prepare_dataset.get_knearest_models_func(
-                         cg['FOLDER_PATH'],
-                         cg['CLIP_MODEL'],
-                         cg['NUM_OF_BUCKETS'],
-                         model,
-                         preprocess
-                     )
-
-    for b_idx, folder_path in enumerate(folder_paths):
-        clip_features_normalized_paths = prepare_dataset.get_clip_features_normalized_paths(
-                                             folder_path,
-                                             cg['CLIP_MODEL']
-                                         )
-        save_folder_path = os.path.join(save_path, f'{b_idx}')
-        dataset_dict[b_idx] = {}
-        dataset_dict_i_path = os.path.join(save_path, f"dataset_dict_{b_idx}.pickle")
-        if os.path.exists(dataset_dict_i_path):
-            print(f"Exists: {dataset_dict_i_path}")
-            continue
-        else:
-            print(f"Starting querying for bucket {b_idx}. Result will be saved at {dataset_dict_i_path}")
+        bucket_dict = prepare_dataset.load_bucket_dict(cg['FOLDER_PATH'], cg['NUM_OF_BUCKETS'])
         
-        k_near_faiss = k_nearest_func(b_idx)
+        dataset_dict = {}
+        model, preprocess = clip.load(cg['CLIP_MODEL'], device='cpu')
+        k_nearest_func = prepare_dataset.get_knearest_models_func(
+                            cg['FOLDER_PATH'],
+                            cg['CLIP_MODEL'],
+                            cg['NUM_OF_BUCKETS'],
+                            model,
+                            preprocess
+                        )
 
-        positive_dataset_dict_b_idx = retrieve_examples(
-            prompts,
-            k_near_faiss.grab_top_query_indices,
-            clip_features_normalized_paths,
-            bucket_dict[b_idx],
-            allow_overlap=cg['ALLOW_OVERLAP'],
-            class_size=cg['NUM_OF_IMAGES_PER_CLASS_PER_BUCKET'], # Num of class size
-            nn_size=cg['NUM_OF_IMAGES_PER_CLASS_PER_BUCKET_TO_QUERY'], # Num of Nearest neighbor
-        )
-        
-        if cg['BACKGROUND']:
-            negative_dataset_dict_b_idx = retrieve_examples(
+        for b_idx, folder_path in enumerate(folder_paths):
+            clip_features_normalized_paths = prepare_dataset.get_clip_features_normalized_paths(
+                                                folder_path,
+                                                cg['CLIP_MODEL']
+                                            )
+            save_folder_path = os.path.join(save_path, f'{b_idx}')
+            dataset_dict[b_idx] = {}
+            dataset_dict_i_path = os.path.join(save_path, f"dataset_dict_{b_idx}.pickle")
+            if os.path.exists(dataset_dict_i_path):
+                print(f"Exists: {dataset_dict_i_path}")
+                dataset_dict[b_idx] = load_pickle(dataset_dict_i_path)
+                continue
+            else:
+                print(f"Starting querying for bucket {b_idx}. Result will be saved at {dataset_dict_i_path}")
+            
+            k_near_faiss = k_nearest_func(b_idx)
+
+            positive_dataset_dict_b_idx = retrieve_examples(
                 prompts,
-                k_near_faiss.grab_bottom_query_indices,
+                k_near_faiss.grab_top_query_indices,
                 clip_features_normalized_paths,
                 bucket_dict[b_idx],
-                allow_overlap=False,
+                allow_overlap=cg['ALLOW_OVERLAP'],
                 class_size=cg['NUM_OF_IMAGES_PER_CLASS_PER_BUCKET'], # Num of class size
                 nn_size=cg['NUM_OF_IMAGES_PER_CLASS_PER_BUCKET_TO_QUERY'], # Num of Nearest neighbor
             )
+            
+            if cg['BACKGROUND']:
+                negative_dataset_dict_b_idx = retrieve_examples(
+                    prompts,
+                    k_near_faiss.grab_bottom_query_indices,
+                    clip_features_normalized_paths,
+                    bucket_dict[b_idx],
+                    allow_overlap=False,
+                    class_size=cg['NUM_OF_IMAGES_PER_CLASS_PER_BUCKET'], # Num of class size
+                    nn_size=cg['NUM_OF_IMAGES_PER_CLASS_PER_BUCKET_TO_QUERY'], # Num of Nearest neighbor
+                )
 
-            dataset_dict[b_idx] = compose_pos_neg_dataset_dict(
-                positive_dataset_dict_b_idx,
-                negative_dataset_dict_b_idx,
-                negative_ratio=cg['NEGATIVE_RATIO']
-            )
-        else:
-            dataset_dict[b_idx] = positive_dataset_dict_b_idx
+                dataset_dict[b_idx] = compose_pos_neg_dataset_dict(
+                    positive_dataset_dict_b_idx,
+                    negative_dataset_dict_b_idx,
+                    negative_ratio=cg['NEGATIVE_RATIO']
+                )
+            else:
+                dataset_dict[b_idx] = positive_dataset_dict_b_idx
 
-        save_obj_as_pickle(dataset_dict_i_path, dataset_dict[b_idx])
-        print(f"Save at {dataset_dict_i_path}")
-    
-    save_obj_as_pickle(dataset_dict_save_path, dataset_dict)
-    print(f"Save at {dataset_dict_save_path}")
+            if len(dataset_dict[b_idx].keys()) == 0:
+                import pdb; pdb.set_trace()
+            save_obj_as_pickle(dataset_dict_i_path, dataset_dict[b_idx])
+            print(f"Save at {dataset_dict_i_path}")
+        
+        save_obj_as_pickle(dataset_dict_save_path, dataset_dict)
+        print(f"Save at {dataset_dict_save_path}")
 
     for b_idx, folder_path in enumerate(folder_paths):
         save_folder_path = os.path.join(save_path, f'{b_idx}')
-        dataset_dict[b_idx] = {}
-        dataset_dict_i_path = os.path.join(save_path, f"dataset_dict_{b_idx}.pickle")
-        if not os.path.exists(dataset_dict_i_path):
-            print(f"Exists: {dataset_dict_i_path}")
-            continue
         
         for label in dataset_dict[b_idx]:
             save_folder_path_label = os.path.join(save_folder_path, label)
             if not os.path.exists(save_folder_path_label):
                 os.makedirs(save_folder_path_label)
-            for meta in dataset_dict[b_idx][label]:
+            for meta in dataset_dict[b_idx][label]['metadata']:
                 original_path = meta.get_path()
                 ID = meta.get_metadata().ID
                 EXT = meta.get_metadata().EXT
