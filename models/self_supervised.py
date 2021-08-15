@@ -1,12 +1,10 @@
 import torch
 
-MOCO_PATH = "/project_data/ramanan/zhiqiu/Self-Improving/models/moco_r50_v2-e3b0c442.pth"
-INSTANCE_PATH = "/project_data/ramanan/zhiqiu/Self-Improving/models/lemniscate_resnet50_update.pth"
-BYOL_PATH = "/project_data/ramanan/zhiqiu/Self-Improving/models/byol_r50-e3b0c442.pth"
-ROT_PATH = "/project_data/ramanan/zhiqiu/Self-Improving/models/rotation_r50-cfab8ebb.pth"
-DEEPCLUSTER_PATH = "/project_data/ramanan/zhiqiu/Self-Improving/models/byol_r50-e3b0c442.pth"
-RELATIVELOC_PATH = "/project_data/ramanan/zhiqiu/Self-Improving/models/byol_r50-e3b0c442.pth"
-MOCO_YFCC_GPU_8_PATH = "/project_data/ramanan/zhiqiu/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar"
+MOCO_PATH = "/data3/zhiqiul/self_supervised_models/moco_r50_v2-e3b0c442.pth"
+INSTANCE_PATH = "/data3/zhiqiul/self_supervised_models/lemniscate_resnet50_update.pth"
+BYOL_PATH = "/data3/zhiqiul/self_supervised_models/byol_r50-e3b0c442.pth"
+ROT_PATH = "/data3/zhiqiul/self_supervised_models/rotation_r50-cfab8ebb.pth"
+MOCO_YFCC_GPU_8_PATH = "/data3/zhiqiul/self_supervised_models/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar"
 
 def moco_v2(model, path=MOCO_PATH):
     checkpoint = torch.load(path)['state_dict']
@@ -20,16 +18,6 @@ def byol(model, path=BYOL_PATH):
 
 
 def rot(model, path=ROT_PATH):
-    checkpoint = torch.load(path)['state_dict']
-    model.load_state_dict(checkpoint, strict=False)
-    return model
-
-def deepcluster(model, path=DEEPCLUSTER_PATH):
-    checkpoint = torch.load(path)['state_dict']
-    model.load_state_dict(checkpoint, strict=False)
-    return model
-
-def relativeloc(model, path=RELATIVELOC_PATH):
     checkpoint = torch.load(path)['state_dict']
     model.load_state_dict(checkpoint, strict=False)
     return model

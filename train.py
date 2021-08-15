@@ -970,76 +970,76 @@ if __name__ == '__main__':
         curr_and_prev_loaders_dict_path = os.path.join(exp_result_save_path,
                                                     f"curr_and_prev_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-        if os.path.exists(curr_and_prev_loaders_dict_path):
-            print(f"{curr_and_prev_loaders_dict_path} already exists.")
-            curr_and_prev_loaders_dict = load_pickle(curr_and_prev_loaders_dict_path)
-        else:
-            curr_and_prev_loaders_dict = get_curr_and_prev_loaders_from_features_dict(
-                                            features_dict,
-                                            args.train_mode,
-                                            HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
-                                            excluded_bucket_idx=excluded_bucket_idx
-                                        )
-            save_obj_as_pickle(curr_and_prev_loaders_dict_path, curr_and_prev_loaders_dict)
+        # if os.path.exists(curr_and_prev_loaders_dict_path):
+        #     print(f"{curr_and_prev_loaders_dict_path} already exists.")
+        #     curr_and_prev_loaders_dict = load_pickle(curr_and_prev_loaders_dict_path)
+        # else:
+        #     curr_and_prev_loaders_dict = get_curr_and_prev_loaders_from_features_dict(
+        #                                     features_dict,
+        #                                     args.train_mode,
+        #                                     HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
+        #                                     excluded_bucket_idx=excluded_bucket_idx
+        #                                 )
+        #     save_obj_as_pickle(curr_and_prev_loaders_dict_path, curr_and_prev_loaders_dict)
         
-        curr_and_random_prev_loaders_dict_path = os.path.join(exp_result_save_path,
-                                                    f"curr_and_random_prev_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        # curr_and_random_prev_loaders_dict_path = os.path.join(exp_result_save_path,
+        #                                             f"curr_and_random_prev_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-        if os.path.exists(curr_and_random_prev_loaders_dict_path):
-            print(f"{curr_and_random_prev_loaders_dict_path} already exists.")
-            curr_and_random_prev_loaders_dict = load_pickle(curr_and_random_prev_loaders_dict_path)
-        else:
-            curr_and_random_prev_loaders_dict = get_curr_and_random_prev_loaders_from_features_dict(
-                                                    features_dict,
-                                                    args.train_mode,
-                                                    HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
-                                                    excluded_bucket_idx=excluded_bucket_idx
-                                                )
-            save_obj_as_pickle(curr_and_random_prev_loaders_dict_path, curr_and_random_prev_loaders_dict)
+        # if os.path.exists(curr_and_random_prev_loaders_dict_path):
+        #     print(f"{curr_and_random_prev_loaders_dict_path} already exists.")
+        #     curr_and_random_prev_loaders_dict = load_pickle(curr_and_random_prev_loaders_dict_path)
+        # else:
+        #     curr_and_random_prev_loaders_dict = get_curr_and_random_prev_loaders_from_features_dict(
+        #                                             features_dict,
+        #                                             args.train_mode,
+        #                                             HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
+        #                                             excluded_bucket_idx=excluded_bucket_idx
+        #                                         )
+        #     save_obj_as_pickle(curr_and_random_prev_loaders_dict_path, curr_and_random_prev_loaders_dict)
         
-        ############### Run Curr and Random Prev (Retrain) Experiment
-        results_dict_curr_and_random_prev_retrain_path = os.path.join(exp_result_save_path,
-                                                            f"results_dict_curr_and_random_prev_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        # ############### Run Curr and Random Prev (Retrain) Experiment
+        # results_dict_curr_and_random_prev_retrain_path = os.path.join(exp_result_save_path,
+        #                                                     f"results_dict_curr_and_random_prev_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
         
-        if not os.path.exists(results_dict_curr_and_random_prev_retrain_path):
-            results_dict_curr_and_random_prev_retrain = run_single(curr_and_random_prev_loaders_dict, all_query, args.train_mode)
-            save_obj_as_pickle(results_dict_curr_and_random_prev_retrain_path, results_dict_curr_and_random_prev_retrain)
-            print(f"Saved at {results_dict_curr_and_random_prev_retrain_path}")
-        else:
-            print(results_dict_curr_and_random_prev_retrain_path + " already exists")
+        # if not os.path.exists(results_dict_curr_and_random_prev_retrain_path):
+        #     results_dict_curr_and_random_prev_retrain = run_single(curr_and_random_prev_loaders_dict, all_query, args.train_mode)
+        #     save_obj_as_pickle(results_dict_curr_and_random_prev_retrain_path, results_dict_curr_and_random_prev_retrain)
+        #     print(f"Saved at {results_dict_curr_and_random_prev_retrain_path}")
+        # else:
+        #     print(results_dict_curr_and_random_prev_retrain_path + " already exists")
         
-        ############### Run Curr and Random Prev (Finetune) Experiment
-        results_dict_curr_and_random_prev_finetune_path = os.path.join(exp_result_save_path,
-                                                            f"results_dict_curr_and_random_prev_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        # ############### Run Curr and Random Prev (Finetune) Experiment
+        # results_dict_curr_and_random_prev_finetune_path = os.path.join(exp_result_save_path,
+        #                                                     f"results_dict_curr_and_random_prev_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-        if not os.path.exists(results_dict_curr_and_random_prev_finetune_path):
-            results_dict_curr_and_random_prev_finetune = run_single_finetune(curr_and_random_prev_loaders_dict, all_query, args.train_mode)
-            save_obj_as_pickle(results_dict_curr_and_random_prev_finetune_path, results_dict_curr_and_random_prev_finetune)
-            print(f"Saved at {results_dict_curr_and_random_prev_finetune_path}")
-        else:
-            print(results_dict_curr_and_random_prev_finetune_path + " already exists")
+        # if not os.path.exists(results_dict_curr_and_random_prev_finetune_path):
+        #     results_dict_curr_and_random_prev_finetune = run_single_finetune(curr_and_random_prev_loaders_dict, all_query, args.train_mode)
+        #     save_obj_as_pickle(results_dict_curr_and_random_prev_finetune_path, results_dict_curr_and_random_prev_finetune)
+        #     print(f"Saved at {results_dict_curr_and_random_prev_finetune_path}")
+        # else:
+        #     print(results_dict_curr_and_random_prev_finetune_path + " already exists")
 
-        ############### Run Curr and Prev (Retrain) Experiment
-        results_dict_curr_and_prev_retrain_path = os.path.join(exp_result_save_path,
-                                                            f"results_dict_curr_and_prev_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        # ############### Run Curr and Prev (Retrain) Experiment
+        # results_dict_curr_and_prev_retrain_path = os.path.join(exp_result_save_path,
+        #                                                     f"results_dict_curr_and_prev_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
         
-        if not os.path.exists(results_dict_curr_and_prev_retrain_path):
-            results_dict_curr_and_prev_retrain = run_single(curr_and_prev_loaders_dict, all_query, args.train_mode)
-            save_obj_as_pickle(results_dict_curr_and_prev_retrain_path, results_dict_curr_and_prev_retrain)
-            print(f"Saved at {results_dict_curr_and_prev_retrain_path}")
-        else:
-            print(results_dict_curr_and_prev_retrain_path + " already exists")
+        # if not os.path.exists(results_dict_curr_and_prev_retrain_path):
+        #     results_dict_curr_and_prev_retrain = run_single(curr_and_prev_loaders_dict, all_query, args.train_mode)
+        #     save_obj_as_pickle(results_dict_curr_and_prev_retrain_path, results_dict_curr_and_prev_retrain)
+        #     print(f"Saved at {results_dict_curr_and_prev_retrain_path}")
+        # else:
+        #     print(results_dict_curr_and_prev_retrain_path + " already exists")
         
-        ############### Run Curr and Prev (Finetune) Experiment
-        results_dict_curr_and_prev_finetune_path = os.path.join(exp_result_save_path,
-                                                            f"results_dict_curr_and_prev_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        # ############### Run Curr and Prev (Finetune) Experiment
+        # results_dict_curr_and_prev_finetune_path = os.path.join(exp_result_save_path,
+        #                                                     f"results_dict_curr_and_prev_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-        if not os.path.exists(results_dict_curr_and_prev_finetune_path):
-            results_dict_curr_and_prev_finetune = run_single_finetune(curr_and_prev_loaders_dict, all_query, args.train_mode)
-            save_obj_as_pickle(results_dict_curr_and_prev_finetune_path, results_dict_curr_and_prev_finetune)
-            print(f"Saved at {results_dict_curr_and_prev_finetune_path}")
-        else:
-            print(results_dict_curr_and_prev_finetune_path + " already exists")
+        # if not os.path.exists(results_dict_curr_and_prev_finetune_path):
+        #     results_dict_curr_and_prev_finetune = run_single_finetune(curr_and_prev_loaders_dict, all_query, args.train_mode)
+        #     save_obj_as_pickle(results_dict_curr_and_prev_finetune_path, results_dict_curr_and_prev_finetune)
+        #     print(f"Saved at {results_dict_curr_and_prev_finetune_path}")
+        # else:
+        #     print(results_dict_curr_and_prev_finetune_path + " already exists")
 
         ############### Run Sequential (Retrain) Experiment
         results_dict_sequential_retrain_path = os.path.join(exp_result_save_path,

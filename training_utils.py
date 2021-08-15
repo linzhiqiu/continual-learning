@@ -17,21 +17,6 @@ from tqdm import tqdm
 import copy
 
 from torch.utils.data import Dataset
-from torchvision.datasets.folder import default_loader
-class SimpleDataset(Dataset):
-    def __init__(self, samples, transform, class_names=None):
-        self.samples = samples
-        self.transform = transform
-        self.class_names = class_names
-    
-    def __len__(self):
-        return len(self.samples)
-    
-    def __getitem__(self,index):
-        path, label = self.samples[index]
-        sample = default_loader(path)
-        sample = self.transform(sample)
-        return sample, label
 
 class CLIPDataset(Dataset):
     def __init__(self, samples, class_names=None):
@@ -143,22 +128,6 @@ def make_scheduler(optimizer, step_size=50, gamma=0.1):
     )
     return scheduler
 
-def make_loader(dataset, transform, shuffle=False, batch_size=256, num_workers=0):
-    return torch.utils.data.DataLoader(
-        SimpleDataset(dataset, transform), 
-        batch_size=batch_size, 
-        shuffle=shuffle, 
-        num_workers=num_workers,
-    )
-
-def make_clip_loader(dataset, shuffle=False, batch_size=256, num_workers=0):
-    return torch.utils.data.DataLoader(
-        CLIPDataset(dataset), 
-        batch_size=batch_size,
-        shuffle=shuffle, 
-        num_workers=num_workers,
-    )
-
 class MLP(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(MLP, self).__init__()
@@ -194,14 +163,8 @@ def make_model(arch, pretrained, selfsupervised, train_mode='finetune', output_s
                 model = self_supervised.byol(model)
             elif selfsupervised == "rot":
                 model = self_supervised.rot(model)
-            elif selfsupervised == "deepcluster":
-                model = self_supervised.deepcluster(model)
-            elif selfsupervised == "relativeloc":
-                model = self_supervised.relativeloc(model)
             elif selfsupervised == "moco_v2_yfcc_feb18_bucket_0_gpu_8":
                 model = self_supervised.moco_v2_yfcc_feb18_bucket_0_gpu_8(model)
-            elif selfsupervised == "moco_v2_yfcc_feb18_bucket_0_gpu_8_github":
-                model = self_supervised.moco_v2_yfcc_feb18_bucket_0_gpu_8_github(model)
             else:
                 raise NotImplementedError()
     else:
