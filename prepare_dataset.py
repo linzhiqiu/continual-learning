@@ -62,7 +62,7 @@ def get_knearest_models_func(folder_path, clip_model_name, num_of_bucket, model,
     return knearest_func
 
 def get_clip_features_normalized_paths(f_path, model_name):
-    """A helper function to return paths to normalized clip features
+    """A helper function to return paths to normalized ·clip features
     """
     clip_features_normalized_paths = []
     main_pickle_location = get_main_save_location(f_path, model_name)

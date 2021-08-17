@@ -104,31 +104,26 @@ TRAIN_MODES_CATEGORY = {
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--folder_path",
-                       default='/compute/autobot-1-1/zhiqiu/yfcc_dynamic_10',
+                       default='/scratch/zhiqiu/yfcc_dynamic_10',
                        help="The folder with the images and query_dict.pickle")
 argparser.add_argument("--exp_result_path",
-                       default='/project_data/ramanan/zhiqiu/yfcc_dynamic_10',
-                       help="The folder with the images and query_dict.pickle")
-# argparser.add_argument('--num_of_bucket', default=11, type=int,
-#                        help='number of bucket')
+                       default='/data3/zhiqiul/yfcc_dynamic_10',
+                       help="Where the experiment results will be saved")
 argparser.add_argument("--dataset_name",
-                    #    default='dynamic_300_cleaned', # best test model
-                       default='dynamic_300', # best training loss
-                    #    default='dynamic_300_second_run',  # best training loss
-                    #    default='dynamic_negative_300_cleaned_bucket_1_only',
-                       help="nly evaluate on this label set")
+                       default='dynamic_300',
+                       help="only evaluate on this label set")
 argparser.add_argument('--train_mode',
                        default='linear', choices=TRAIN_MODES_CATEGORY.keys(),
                        help='Train mode')
 argparser.add_argument('--mode',
                        default='default', choices=MODE_DICT.keys(),
-                       help='Mode for dataset split')
+                       help='Mode for dataset split (whether or not to include validation set)')
 argparser.add_argument('--seed',
                        default=None, type=int,
                        help='Seed for experiment')
 argparser.add_argument('--excluded_bucket_idx',
                        default=0, type=int,
-                       help='Excluding this bucket from all experiments')
+                       help='Excluding this bucket from all experiments (default: 0)')
 
 def get_seed_str(seed):
     if seed == None:
@@ -265,12 +260,6 @@ def get_all_loaders_from_features_dict(all_features_dict, train_mode, hyperparam
         loaders_dict[k_name] = loader
     return loaders_dict
 
-# def get_excluded_bucket_idx(moco_model):
-#     moco_paths = moco_model.split(os.sep)
-#     model_configs = moco_paths[-2].split("_")
-#     excluded_bucket_idx = model_configs[model_configs.index('idx')+1]
-#     return int(excluded_bucket_idx)
-
 def get_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
     loaders_dict = {}  # Saved the splitted loader for each bucket
 
@@ -290,90 +279,18 @@ def get_loaders_from_features_dict(features_dict, train_mode, hyperparameter, ex
             loaders_dict[b_idx][k_name] = loader
     return loaders_dict
 
-def get_curr_and_prev_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
+def get_cumulative_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
     all_bucket = sorted(list(features_dict.keys()))
-    print(f"Excluding {excluded_bucket_idx} from the sequential loaders")
+    print(f"Excluding {excluded_bucket_idx} from the cumulative loaders")
     if type(excluded_bucket_idx) == int:
         features_dict = {k: features_dict[k]
                         for k in all_bucket if k != excluded_bucket_idx}
-    curr_and_prev_loaders_dict = {}
-    loader_func = get_loader_func(train_mode, hyperparameter.batch_size)
-
-    for b_idx in all_bucket:
-        curr_and_prev_loaders_dict[b_idx] = {}
-        assert 'val' not in features_dict[b_idx]
-        train_items = []
-        prev_b_idx = b_idx - 1
-        if prev_b_idx in features_dict:
-            print(f"Add {prev_b_idx} to {b_idx} train loader")
-            train_items += features_dict[prev_b_idx]['train']
-        train_items += features_dict[b_idx]['train']
-        train_loader = loader_func(train_items, True)
-        curr_and_prev_loaders_dict[b_idx]['train'] = train_loader
-        
-        test_items = []
-        test_items += features_dict[b_idx]['test']
-        test_loader = loader_func(test_items, False)
-        curr_and_prev_loaders_dict[b_idx]['test'] = test_loader
-    return curr_and_prev_loaders_dict
-
-def get_curr_and_random_prev_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
-    all_bucket = sorted(list(features_dict.keys()))
-    print(f"Excluding {excluded_bucket_idx} from the sequential loaders")
-    if type(excluded_bucket_idx) == int:
-        features_dict = {k: features_dict[k]
-                         for k in all_bucket if k != excluded_bucket_idx}
-    curr_and_random_prev_loaders_dict = {}
-    loader_func = get_loader_func(train_mode, hyperparameter.batch_size)
-
-    train_buffer = [] # buffer is cap at size 2 bucket
-    n = 0. # number of seen examples in the stream
-    k = None # number of examples in two buckets. will be calculated in in first iteration. Assume each bucket has same size!
-    # import pdb; pdb.set_trace()
-    for idx, b_idx in enumerate(all_bucket):
-            
-        curr_and_random_prev_loaders_dict[b_idx] = {}
-        assert 'val' not in features_dict[b_idx]
-        n += len(features_dict[b_idx]['train'])
-        if idx == 0:
-            train_buffer = features_dict[b_idx]['train']
-            k = 2 * n # This is currently 2 * bucket size
-        elif idx == 1:
-            train_buffer += features_dict[b_idx]['train']
-        else:
-            print(f'select new examples with probability {k/n:.2f} = {k} / {n}')
-            prob = k/n
-            new_items_to_add_to_buffer = []
-            for item in features_dict[b_idx]['train']:
-                if random.random() <= prob:
-                    new_items_to_add_to_buffer.append(item)
-            print(f"Selected {len(new_items_to_add_to_buffer)} samples out of {k} incoming samples")
-            random.shuffle(train_buffer)
-            train_buffer = train_buffer[:len(train_buffer) - len(new_items_to_add_to_buffer)]
-            train_buffer += new_items_to_add_to_buffer
-        
-        train_loader = loader_func(train_buffer.copy(), True) # Important! TO use copy() otherwise it will be changed
-        curr_and_random_prev_loaders_dict[b_idx]['train'] = train_loader
-        
-        test_items = []
-        test_items += features_dict[b_idx]['test']
-        test_loader = loader_func(test_items.copy(), False)
-        curr_and_random_prev_loaders_dict[b_idx]['test'] = test_loader
-    # import pdb; pdb.set_trace()
-    return curr_and_random_prev_loaders_dict
-
-def get_sequential_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
-    all_bucket = sorted(list(features_dict.keys()))
-    print(f"Excluding {excluded_bucket_idx} from the sequential loaders")
-    if type(excluded_bucket_idx) == int:
-        features_dict = {k: features_dict[k]
-                        for k in all_bucket if k != excluded_bucket_idx}
-    sequential_loaders_dict = {}
+    cumulative_loaders_dict = {}
 
     loader_func = get_loader_func(train_mode, hyperparameter.batch_size)
 
     for b_idx in all_bucket:
-        sequential_loaders_dict[b_idx] = {}
+        cumulative_loaders_dict[b_idx] = {}
         assert 'val' not in features_dict[b_idx]
 
         train_items = []
@@ -381,13 +298,13 @@ def get_sequential_loaders_from_features_dict(features_dict, train_mode, hyperpa
             if curr_b_idx <= b_idx:
                 train_items += features_dict[curr_b_idx]['train']
         train_loader = loader_func(train_items, True)
-        sequential_loaders_dict[b_idx]['train'] = train_loader
+        cumulative_loaders_dict[b_idx]['train'] = train_loader
             
         test_items = []
         test_items += features_dict[b_idx]['test']
         test_loader = loader_func(test_items, False)
-        sequential_loaders_dict[b_idx]['test'] = test_loader
-    return sequential_loaders_dict
+        cumulative_loaders_dict[b_idx]['test'] = test_loader
+    return cumulative_loaders_dict
 
 class MLP(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -574,103 +491,6 @@ def train(loaders,
     return network, acc_result, best_result, avg_results
     # acc_result is {'train': best_val_epoch_train_acc, 'val': best_val_acc, 'test': test_acc}
 
-# def train_best_test(loaders,
-#           train_mode, output_size,
-#           epochs=150, lr=0.1, weight_decay=1e-5, step_size=60,
-#           finetuned_model=None):
-#     if finetuned_model == None:
-#         network = make_model(train_mode, output_size).cuda()
-#         print("Retraining..")
-#     else:
-#         network = finetuned_model
-#         print("Finetuning..")
-    
-#     optimizer = training_utils.make_optimizer(network, lr, weight_decay)
-#     scheduler = training_utils.make_scheduler(optimizer, step_size=step_size)
-#     criterion = torch.nn.NLLLoss(reduction='mean')
-
-#     avg_results = {'train': {'loss_per_epoch': [], 'acc_per_epoch': []},
-#                    'test':  {'loss_per_epoch': [], 'acc_per_epoch': []}}
-#     if 'val' in loaders:
-#         avg_results['val'] = {'loss_per_epoch': [], 'acc_per_epoch': []}
-#         model_selection_criterion = 'val'
-#         phases = ['train', 'val', 'test']
-#     else:
-#         model_selection_criterion = 'test'
-#         phases = ['train', 'test']
-
-#     best_result = {'best_acc': 0, 'best_epoch': None, 'best_network': None}
-
-#     for epoch in range(0, epochs):
-#         print(f"Epoch {epoch}")
-#         for phase in phases:
-#             if phase == 'train':
-#                 network.train()
-#             else:
-#                 network.eval()
-
-#             running_loss = 0.0
-#             running_corrects = 0.
-#             count = 0
-
-#             pbar = loaders[phase]
-
-#             for batch, data in enumerate(pbar):
-#                 inputs, labels = data
-#                 count += inputs.size(0)
-
-#                 inputs = inputs.cuda()
-#                 labels = labels.cuda()
-
-#                 if phase == 'train':
-#                     optimizer.zero_grad()
-
-#                 with torch.set_grad_enabled(phase == 'train'):
-#                     outputs = network(inputs)
-#                     _, preds = torch.max(outputs, 1)
-
-#                     log_probability = torch.nn.functional.log_softmax(
-#                         outputs, dim=1)
-#                     loss = criterion(log_probability, labels)
-
-#                     if phase == 'train':
-#                         loss.backward()
-#                         optimizer.step()
-
-#                 # statistics
-#                 running_loss += loss.item() * inputs.size(0)
-#                 running_corrects += torch.sum(preds == labels.data)
-
-#             avg_loss = float(running_loss)/count
-#             avg_acc = float(running_corrects)/count
-#             avg_results[phase]['loss_per_epoch'].append(avg_loss)
-#             avg_results[phase]['acc_per_epoch'].append(avg_acc)
-#             if phase == 'train':
-#                 scheduler.step()
-
-#             if phase == model_selection_criterion:
-#                 if avg_acc > best_result['best_acc']:
-#                     print(
-#                         f"Best {model_selection_criterion} accuracy at epoch {epoch} being {avg_acc}")
-#                     best_result['best_epoch'] = epoch
-#                     best_result['best_acc'] = avg_acc
-#                     best_val_epoch_train_acc = avg_results['train']['acc_per_epoch'][-1]
-#                     print(
-#                         f"Train accuracy at epoch {epoch} being {best_val_epoch_train_acc}")
-#                     best_result['best_network'] = copy.deepcopy(
-#                         network.state_dict())
-
-#             print(f"Epoch {epoch}: Average {phase} Loss {avg_loss}, Accuracy {avg_acc:.2%}")
-#         print()
-#     print(f"Best Test Accuracy (for best {model_selection_criterion} model): {avg_results['test']['acc_per_epoch'][best_result['best_epoch']]:.2%}")
-#     print(f"Best Test Accuracy overall: {max(avg_results['test']['acc_per_epoch']):.2%}")
-#     network.load_state_dict(best_result['best_network'])
-#     test_acc = test(loaders['test'], network, train_mode, save_loc=None, class_names=None)
-#     print(f"Verify the best test accuracy for best {model_selection_criterion} is indeed {test_acc:.2%}")
-#     acc_result = {set_name: avg_results[set_name]['acc_per_epoch'][best_result['best_epoch']] for set_name in phases}
-#     return network, acc_result, best_result, avg_results
-#     # acc_result is {'train': best_val_epoch_train_acc, 'val': best_val_acc, 'test': test_acc}
-
 def test(test_loader, network, train_mode, save_loc=None, class_names=None):
     # class_names should be sorted!!
     # If class_names != None, then return avg_acc, per_class_acc_dict
@@ -730,6 +550,7 @@ def avg_per_class_accuracy(per_class_accuracy_dict):
     return total_per_class_acc/total_count
 
 def only_positive_accuracy(per_class_accuracy_dict):
+    # Accuracy for all classes excluding the background (NEGATIVE) class
     total_count = 0.
     total_correct = 0.
     for class_name in per_class_accuracy_dict:
@@ -950,135 +771,45 @@ if __name__ == '__main__':
         save_obj_as_pickle(loaders_dict_path, loaders_dict)
 
     if not use_val_set(args.mode):
-        # get_curr_and_random_prev_loaders_from_features_dict
-        print("Since not using a validation set, we can perform sequential learning experiment")
-        sequential_loaders_dict_path = os.path.join(exp_result_save_path,
-                                                    f"sequential_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        print("Since not using a validation set, we can perform cumulative learning experiment")
+        cumulative_loaders_dict_path = os.path.join(exp_result_save_path,
+                                                    f"cumulative_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-        if os.path.exists(sequential_loaders_dict_path):
-            print(f"{sequential_loaders_dict_path} already exists.")
-            sequential_loaders_dict = load_pickle(sequential_loaders_dict_path)
+        if os.path.exists(cumulative_loaders_dict_path):
+            print(f"{cumulative_loaders_dict_path} already exists.")
+            cumulative_loaders_dict = load_pickle(cumulative_loaders_dict_path)
         else:
-            sequential_loaders_dict = get_sequential_loaders_from_features_dict(
+            cumulative_loaders_dict = get_cumulative_loaders_from_features_dict(
                                         features_dict,
                                         args.train_mode,
                                         HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
                                         excluded_bucket_idx=excluded_bucket_idx
                                     )
-            save_obj_as_pickle(sequential_loaders_dict_path, sequential_loaders_dict)
+            save_obj_as_pickle(cumulative_loaders_dict_path, cumulative_loaders_dict)
         
-        curr_and_prev_loaders_dict_path = os.path.join(exp_result_save_path,
-                                                    f"curr_and_prev_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        ############### Run Cumulative (Retrain) Experiment
+        results_dict_cumulative_retrain_path = os.path.join(exp_result_save_path,
+                                                            f"results_dict_cumulative_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-        # if os.path.exists(curr_and_prev_loaders_dict_path):
-        #     print(f"{curr_and_prev_loaders_dict_path} already exists.")
-        #     curr_and_prev_loaders_dict = load_pickle(curr_and_prev_loaders_dict_path)
-        # else:
-        #     curr_and_prev_loaders_dict = get_curr_and_prev_loaders_from_features_dict(
-        #                                     features_dict,
-        #                                     args.train_mode,
-        #                                     HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
-        #                                     excluded_bucket_idx=excluded_bucket_idx
-        #                                 )
-        #     save_obj_as_pickle(curr_and_prev_loaders_dict_path, curr_and_prev_loaders_dict)
-        
-        # curr_and_random_prev_loaders_dict_path = os.path.join(exp_result_save_path,
-        #                                             f"curr_and_random_prev_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-
-        # if os.path.exists(curr_and_random_prev_loaders_dict_path):
-        #     print(f"{curr_and_random_prev_loaders_dict_path} already exists.")
-        #     curr_and_random_prev_loaders_dict = load_pickle(curr_and_random_prev_loaders_dict_path)
-        # else:
-        #     curr_and_random_prev_loaders_dict = get_curr_and_random_prev_loaders_from_features_dict(
-        #                                             features_dict,
-        #                                             args.train_mode,
-        #                                             HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
-        #                                             excluded_bucket_idx=excluded_bucket_idx
-        #                                         )
-        #     save_obj_as_pickle(curr_and_random_prev_loaders_dict_path, curr_and_random_prev_loaders_dict)
-        
-        # ############### Run Curr and Random Prev (Retrain) Experiment
-        # results_dict_curr_and_random_prev_retrain_path = os.path.join(exp_result_save_path,
-        #                                                     f"results_dict_curr_and_random_prev_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-        
-        # if not os.path.exists(results_dict_curr_and_random_prev_retrain_path):
-        #     results_dict_curr_and_random_prev_retrain = run_single(curr_and_random_prev_loaders_dict, all_query, args.train_mode)
-        #     save_obj_as_pickle(results_dict_curr_and_random_prev_retrain_path, results_dict_curr_and_random_prev_retrain)
-        #     print(f"Saved at {results_dict_curr_and_random_prev_retrain_path}")
-        # else:
-        #     print(results_dict_curr_and_random_prev_retrain_path + " already exists")
-        
-        # ############### Run Curr and Random Prev (Finetune) Experiment
-        # results_dict_curr_and_random_prev_finetune_path = os.path.join(exp_result_save_path,
-        #                                                     f"results_dict_curr_and_random_prev_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-
-        # if not os.path.exists(results_dict_curr_and_random_prev_finetune_path):
-        #     results_dict_curr_and_random_prev_finetune = run_single_finetune(curr_and_random_prev_loaders_dict, all_query, args.train_mode)
-        #     save_obj_as_pickle(results_dict_curr_and_random_prev_finetune_path, results_dict_curr_and_random_prev_finetune)
-        #     print(f"Saved at {results_dict_curr_and_random_prev_finetune_path}")
-        # else:
-        #     print(results_dict_curr_and_random_prev_finetune_path + " already exists")
-
-        # ############### Run Curr and Prev (Retrain) Experiment
-        # results_dict_curr_and_prev_retrain_path = os.path.join(exp_result_save_path,
-        #                                                     f"results_dict_curr_and_prev_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-        
-        # if not os.path.exists(results_dict_curr_and_prev_retrain_path):
-        #     results_dict_curr_and_prev_retrain = run_single(curr_and_prev_loaders_dict, all_query, args.train_mode)
-        #     save_obj_as_pickle(results_dict_curr_and_prev_retrain_path, results_dict_curr_and_prev_retrain)
-        #     print(f"Saved at {results_dict_curr_and_prev_retrain_path}")
-        # else:
-        #     print(results_dict_curr_and_prev_retrain_path + " already exists")
-        
-        # ############### Run Curr and Prev (Finetune) Experiment
-        # results_dict_curr_and_prev_finetune_path = os.path.join(exp_result_save_path,
-        #                                                     f"results_dict_curr_and_prev_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-
-        # if not os.path.exists(results_dict_curr_and_prev_finetune_path):
-        #     results_dict_curr_and_prev_finetune = run_single_finetune(curr_and_prev_loaders_dict, all_query, args.train_mode)
-        #     save_obj_as_pickle(results_dict_curr_and_prev_finetune_path, results_dict_curr_and_prev_finetune)
-        #     print(f"Saved at {results_dict_curr_and_prev_finetune_path}")
-        # else:
-        #     print(results_dict_curr_and_prev_finetune_path + " already exists")
-
-        ############### Run Sequential (Retrain) Experiment
-        results_dict_sequential_retrain_path = os.path.join(exp_result_save_path,
-                                                            f"results_dict_sequential_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-
-        if not os.path.exists(results_dict_sequential_retrain_path):
-            results_dict_sequential_retrain = run_single(sequential_loaders_dict, all_query, args.train_mode)
-            save_obj_as_pickle(results_dict_sequential_retrain_path, results_dict_sequential_retrain)
-            print(f"Saved at {results_dict_sequential_retrain_path}")
+        if not os.path.exists(results_dict_cumulative_retrain_path):
+            results_dict_cumulative_retrain = run_single(cumulative_loaders_dict, all_query, args.train_mode)
+            save_obj_as_pickle(results_dict_cumulative_retrain_path, results_dict_cumulative_retrain)
+            print(f"Saved at {results_dict_cumulative_retrain_path}")
         else:
-            print(results_dict_sequential_retrain_path + " already exists")
+            print(results_dict_cumulative_retrain_path + " already exists")
         
         ############### Run Sequential (Finetune) Experiment
-        results_dict_sequential_finetune_path = os.path.join(exp_result_save_path,
-                                                            f"results_dict_sequential_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        results_dict_cumulative_finetune_path = os.path.join(exp_result_save_path,
+                                                            f"results_dict_cumulative_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-        if not os.path.exists(results_dict_sequential_finetune_path):
-            results_dict_sequential_finetune = run_single_finetune(sequential_loaders_dict, all_query, args.train_mode)
-            save_obj_as_pickle(results_dict_sequential_finetune_path, results_dict_sequential_finetune)
-            print(f"Saved at {results_dict_sequential_finetune_path}")
+        if not os.path.exists(results_dict_cumulative_finetune_path):
+            results_dict_cumulative_finetune = run_single_finetune(cumulative_loaders_dict, all_query, args.train_mode)
+            save_obj_as_pickle(results_dict_cumulative_finetune_path, results_dict_cumulative_finetune)
+            print(f"Saved at {results_dict_cumulative_finetune_path}")
         else:
-            print(results_dict_sequential_finetune_path + " already exists")
+            print(results_dict_cumulative_finetune_path + " already exists")
 
-    # curr_and_randomprev_loaders_dict_path = os.path.join(exp_result_save_path,
-    #                                                f"curr_and_randomprev_loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-
-    # if os.path.exists(curr_and_randomprev_loaders_dict_path):
-    #     print(f"{curr_and_randomprev_loaders_dict_path} already exists.")
-    #     curr_and_randomprev_loaders_dict = load_pickle(curr_and_randomprev_loaders_dict_path)
-    # else:
-    #     curr_and_randomprev_loaders_dict = get_curr_and_randomprev_loaders_from_features_dict(
-    #                                            features_dict,
-    #                                            args.train_mode,
-    #                                            HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
-    #                                            excluded_bucket_idx=excluded_bucket_idx
-    #                                        )
-    #     save_obj_as_pickle(curr_and_randomprev_loaders_dict_path, curr_and_randomprev_loaders_dict)
-        
-    ############### Run Baseline Experiment
+    ############### Run Baseline Experiment (offline with all data)
     results_dict_all_path = os.path.join(exp_result_save_path,
                                          f"results_dict_all_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
     if not os.path.exists(results_dict_all_path):
@@ -1088,7 +819,7 @@ if __name__ == '__main__':
     else:
         print(f"Baseline result saved at {results_dict_all_path}")
 
-    ############### Run Single Bucket Experiment
+    ############### Run Single Bucket Experiment (replay buffer size is one bucket of images)
     results_dict_single_path = os.path.join(exp_result_save_path,
                                             f"results_dict_single_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
@@ -1099,7 +830,7 @@ if __name__ == '__main__':
     else:
         print(results_dict_single_path + " already exists")
 
-    ############### Run Single Bucket (Finetune) Experiment
+    ############### Run Single Bucket (Finetune) Experiment (replay buffer size is one bucket of images)
     results_dict_single_finetune_path = os.path.join(exp_result_save_path,
                                                      f"results_dict_single_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
@@ -1111,7 +842,5 @@ if __name__ == '__main__':
         print(results_dict_single_finetune_path + " already exists")
 
 
-
-    # import pdb; pdb.set_trace()
 
     

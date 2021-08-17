@@ -28,7 +28,7 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 def normalize(features):
-    # Normalize a 2d features
+    # Normalize a matrix of 2d features
     return features / np.linalg.norm(features, axis=1).reshape(features.shape[0],1)
 
 import more_itertools as mit

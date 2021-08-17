@@ -17,9 +17,6 @@ from train import get_loader_func, get_all_loaders_from_features_dict, get_loade
 from train import MLP, make_feature_extractor, make_cnn_model, get_input_size, make_model, train, test
 from train import avg_per_class_accuracy, only_positive_accuracy
 
-#TODO:
-# 1 = 6 eval metrics
-# 2 = test on both 30% and 100%
 ALPHA_VALUE_DICT = {
     'fixed' : [0.25, 0.5, 1.0, 2.0, 5.0],
     'dynamic' : [0.25, 0.5, 0.75, 1.0], # coeff * N/k, where k is the buffer size equal to 2 buckets
@@ -30,51 +27,18 @@ argparser.add_argument("--alpha_value_mode",
                     #    default='dynamic',
                        help="Whether alpha is growing as stream is moving")
 
-def get_curr_and_prev_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
+def get_cumulative_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
     all_bucket = sorted(list(features_dict.keys()))
-    print(f"Excluding {excluded_bucket_idx} from the sequential loaders")
+    print(f"Excluding {excluded_bucket_idx} from the cumulative loaders")
     if type(excluded_bucket_idx) == int:
         features_dict = {k: features_dict[k]
                         for k in all_bucket if k != excluded_bucket_idx}
-    curr_and_prev_loaders_dict = {}
-    loader_func = get_loader_func(train_mode, hyperparameter.batch_size)
-
-    for b_idx in all_bucket:
-        curr_and_prev_loaders_dict[b_idx] = {}
-        assert 'val' not in features_dict[b_idx]
-        train_items = []
-        prev_b_idx = b_idx - 1
-        if prev_b_idx in features_dict:
-            print(f"Add {prev_b_idx} to {b_idx} train loader")
-            train_items += features_dict[prev_b_idx]['train']
-        train_items += features_dict[b_idx]['train']
-        train_loader = loader_func(train_items, True)
-        curr_and_prev_loaders_dict[b_idx]['train'] = train_loader
-        
-        test_items = []
-        test_items += features_dict[b_idx]['test']
-        test_loader = loader_func(test_items, False)
-        curr_and_prev_loaders_dict[b_idx]['test'] = test_loader
-
-        all_items = []
-        all_items += features_dict[b_idx]['all']
-        all_loader = loader_func(all_items.copy(), False)
-        curr_and_prev_loaders_dict[b_idx]['all'] = all_loader
-        
-    return curr_and_prev_loaders_dict
-
-def get_sequential_loaders_from_features_dict(features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
-    all_bucket = sorted(list(features_dict.keys()))
-    print(f"Excluding {excluded_bucket_idx} from the sequential loaders")
-    if type(excluded_bucket_idx) == int:
-        features_dict = {k: features_dict[k]
-                        for k in all_bucket if k != excluded_bucket_idx}
-    sequential_loaders_dict = {}
+    cumulative_loaders_dict = {}
 
     loader_func = get_loader_func(train_mode, hyperparameter.batch_size)
 
     for b_idx in all_bucket:
-        sequential_loaders_dict[b_idx] = {}
+        cumulative_loaders_dict[b_idx] = {}
         assert 'val' not in features_dict[b_idx]
 
         train_items = []
@@ -82,19 +46,19 @@ def get_sequential_loaders_from_features_dict(features_dict, train_mode, hyperpa
             if curr_b_idx <= b_idx:
                 train_items += features_dict[curr_b_idx]['train']
         train_loader = loader_func(train_items, True)
-        sequential_loaders_dict[b_idx]['train'] = train_loader
+        cumulative_loaders_dict[b_idx]['train'] = train_loader
             
         test_items = []
         test_items += features_dict[b_idx]['test']
         test_loader = loader_func(test_items, False)
-        sequential_loaders_dict[b_idx]['test'] = test_loader
+        cumulative_loaders_dict[b_idx]['test'] = test_loader
 
         all_items = []
         all_items += features_dict[b_idx]['all']
         all_loader = loader_func(all_items.copy(), False)
-        sequential_loaders_dict[b_idx]['all'] = all_loader
+        cumulative_loaders_dict[b_idx]['all'] = all_loader
         
-    return sequential_loaders_dict
+    return cumulative_loaders_dict
 
 
 def run_single(loaders_dict, all_query, train_mode):
@@ -240,7 +204,7 @@ def run_single_finetune(loaders_dict, all_query, train_mode):
 def get_singlememory_loaders_from_features_dict(alpha_value_mode, alpha_value, features_dict, train_mode, hyperparameter, excluded_bucket_idx=0):
     # TODO: Single memory + All loaders
     all_bucket = sorted(list(features_dict.keys()))
-    print(f"Excluding {excluded_bucket_idx} from the sequential loaders")
+    print(f"Excluding {excluded_bucket_idx} from the cumulative loaders")
     if type(excluded_bucket_idx) == int:
         features_dict = {k: features_dict[k]
                          for k in all_bucket if k != excluded_bucket_idx}
@@ -400,7 +364,6 @@ if __name__ == '__main__':
         
     # exit(0) # No longer needed because we have online.py
     #### Rerun the rest for testing all loader
-
     loaders_dict_path = os.path.join(exp_result_save_path,
                                      f"loaders_dict_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
@@ -438,83 +401,43 @@ if __name__ == '__main__':
     else:
         print(results_dict_single_finetune_path + " already exists")
 
-    sequential_loaders_dict_path = os.path.join(exp_result_save_path,
-                                                f"sequential_loaders_dict_with_all_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+    cumulative_loaders_dict_path = os.path.join(exp_result_save_path,
+                                                f"cumulative_loaders_dict_with_all_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-    if os.path.exists(sequential_loaders_dict_path):
-        print(f"{sequential_loaders_dict_path} already exists.")
-        sequential_loaders_dict = load_pickle(sequential_loaders_dict_path)
+    if os.path.exists(cumulative_loaders_dict_path):
+        print(f"{cumulative_loaders_dict_path} already exists.")
+        cumulative_loaders_dict = load_pickle(cumulative_loaders_dict_path)
     else:
-        sequential_loaders_dict = get_sequential_loaders_from_features_dict(
+        cumulative_loaders_dict = get_cumulative_loaders_from_features_dict(
                                     features_dict,
                                     args.train_mode,
                                     HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
                                     excluded_bucket_idx=excluded_bucket_idx
                                 )
-        save_obj_as_pickle(sequential_loaders_dict_path, sequential_loaders_dict)
+        save_obj_as_pickle(cumulative_loaders_dict_path, cumulative_loaders_dict)
     
-    curr_and_prev_loaders_dict_path = os.path.join(exp_result_save_path,
-                                                f"curr_and_prev_loaders_dict_with_all_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+    ############### Run Cumulative (Retrain) Experiment
+    results_dict_cumulative_retrain_path = os.path.join(exp_result_save_path,
+                                                        f"results_dict_cumulative_with_all_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
 
-    if os.path.exists(curr_and_prev_loaders_dict_path):
-        print(f"{curr_and_prev_loaders_dict_path} already exists.")
-        curr_and_prev_loaders_dict = load_pickle(curr_and_prev_loaders_dict_path)
+    if not os.path.exists(results_dict_cumulative_retrain_path):
+        results_dict_cumulative_retrain = run_single(cumulative_loaders_dict, all_query, args.train_mode)
+        save_obj_as_pickle(results_dict_cumulative_retrain_path, results_dict_cumulative_retrain)
+        print(f"Saved at {results_dict_cumulative_retrain_path}")
     else:
-        curr_and_prev_loaders_dict = get_curr_and_prev_loaders_from_features_dict(
-                                        features_dict,
-                                        args.train_mode,
-                                        HYPER_DICT[TRAIN_MODES_CATEGORY[args.train_mode].network_type],
-                                        excluded_bucket_idx=excluded_bucket_idx
-                                    )
-        save_obj_as_pickle(curr_and_prev_loaders_dict_path, curr_and_prev_loaders_dict)
+        print(results_dict_cumulative_retrain_path + " already exists")
     
-    ############### Run Curr and Prev (Retrain) Experiment
-    results_dict_curr_and_prev_retrain_path = os.path.join(exp_result_save_path,
-                                                        f"results_dict_curr_and_prev_with_all_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-    
-    if not os.path.exists(results_dict_curr_and_prev_retrain_path):
-        results_dict_curr_and_prev_retrain = run_single(curr_and_prev_loaders_dict, all_query, args.train_mode)
-        save_obj_as_pickle(results_dict_curr_and_prev_retrain_path, results_dict_curr_and_prev_retrain)
-        print(f"Saved at {results_dict_curr_and_prev_retrain_path}")
+    ############### Run Cumulative (Finetune) Experiment
+    results_dict_cumulative_finetune_path = os.path.join(exp_result_save_path,
+                                                        f"results_dict_cumulative_with_all_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+
+    if not os.path.exists(results_dict_cumulative_finetune_path):
+        results_dict_cumulative_finetune = run_single_finetune(cumulative_loaders_dict, all_query, args.train_mode)
+        save_obj_as_pickle(results_dict_cumulative_finetune_path, results_dict_cumulative_finetune)
+        print(f"Saved at {results_dict_cumulative_finetune_path}")
     else:
-        print(results_dict_curr_and_prev_retrain_path + " already exists")
-    
-    ############### Run Curr and Prev (Finetune) Experiment
-    results_dict_curr_and_prev_finetune_path = os.path.join(exp_result_save_path,
-                                                        f"results_dict_curr_and_prev_with_all_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
+        print(results_dict_cumulative_finetune_path + " already exists")
 
-    if not os.path.exists(results_dict_curr_and_prev_finetune_path):
-        results_dict_curr_and_prev_finetune = run_single_finetune(curr_and_prev_loaders_dict, all_query, args.train_mode)
-        save_obj_as_pickle(results_dict_curr_and_prev_finetune_path, results_dict_curr_and_prev_finetune)
-        print(f"Saved at {results_dict_curr_and_prev_finetune_path}")
-    else:
-        print(results_dict_curr_and_prev_finetune_path + " already exists")
-
-    ############### Run Sequential (Retrain) Experiment
-    results_dict_sequential_retrain_path = os.path.join(exp_result_save_path,
-                                                        f"results_dict_sequential_with_all_retrain_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-
-    if not os.path.exists(results_dict_sequential_retrain_path):
-        results_dict_sequential_retrain = run_single(sequential_loaders_dict, all_query, args.train_mode)
-        save_obj_as_pickle(results_dict_sequential_retrain_path, results_dict_sequential_retrain)
-        print(f"Saved at {results_dict_sequential_retrain_path}")
-    else:
-        print(results_dict_sequential_retrain_path + " already exists")
-    
-    ############### Run Sequential (Finetune) Experiment
-    results_dict_sequential_finetune_path = os.path.join(exp_result_save_path,
-                                                        f"results_dict_sequential_with_all_finetune_{dataset_str(args.mode)}_{args.train_mode}_{seed_str}_ex_{excluded_bucket_idx}.pickle")
-
-    if not os.path.exists(results_dict_sequential_finetune_path):
-        results_dict_sequential_finetune = run_single_finetune(sequential_loaders_dict, all_query, args.train_mode)
-        save_obj_as_pickle(results_dict_sequential_finetune_path, results_dict_sequential_finetune)
-        print(f"Saved at {results_dict_sequential_finetune_path}")
-    else:
-        print(results_dict_sequential_finetune_path + " already exists")
-
-
-
-    # import pdb; pdb.set_trace()
 
     
 
