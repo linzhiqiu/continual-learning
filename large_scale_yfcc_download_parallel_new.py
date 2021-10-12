@@ -1,12 +1,12 @@
 # A script to parse flickr datasets/autotags
-# Download all with valid date and min byte 10: python large_scale_yfcc_download.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
-# Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120: python large_scale_yfcc_download.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
-# Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120: python large_scale_yfcc_download.py --img_dir /scratch/zhiqiu/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
-# Download all with valid date and min byte 10 and aspect ratio < 2 and min edge > 120 (running on 0-19): python large_scale_yfcc_download.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_july_7 --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
+# python large_scale_yfcc_download_parallel_new.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2;
 from io import BytesIO
 import os
+import re
+from urllib.parse import unquote_plus
 import json
 import time
+import logging
 import argparse
 from dataclasses import dataclass
 import time
@@ -20,7 +20,9 @@ from dateutil import parser
 import shutil
 import random
 import imagesize
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import save_obj_as_pickle, load_pickle
+import threading
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--img_dir", 
@@ -48,7 +50,7 @@ argparser.add_argument("--size_option",
                         default='original', choices=['original'],
                         help="Whether to use the original image size (max edge has 500 px).")
 argparser.add_argument("--chunk_size",
-                        type=int, default=10000,
+                        type=int, default=50000,
                         help="The number of images to store in each subfolder")
 argparser.add_argument("--max_aspect_ratio",
                        type=float, default=0,
@@ -93,10 +95,15 @@ IDX_LIST = [
 
 IDX_TO_NAME = {i : IDX_LIST[i] for i in range(len(IDX_LIST))}
 
+# TARGET_LINE_NUMBERS = set(pickle.load(open("line_numbers.pkl", "rb")))
+
 @dataclass
 class MetadataObject():
     """Represent Metadata for a single media object
     Args:
+        num_init_classes (int): Number of initial labeled (discovered) classes
+        sample_per_class (int): Number of sample per discovered class
+        num_open_classes (int): Number of classes hold out as open set
         ID (str): Photo/video identifier
         USER_ID (str): User NSID
         NICKNAME (str): User nickname
@@ -291,6 +298,9 @@ def fetch_and_save_image(img_path, url, MIN_EDGE=0, MAX_ASPECT_RATIO=None, MAX_N
     """Return true if image is valid and successfully downloaded
     """
     global running_time
+    trials = 0
+    max_trails = 3
+    sleep_time = 1
     while True:
         try:
             response = requests.get(url)
@@ -307,15 +317,16 @@ def fetch_and_save_image(img_path, url, MIN_EDGE=0, MAX_ASPECT_RATIO=None, MAX_N
                 return False
             return True
         except:
-            if time.time() - running_time < RUN_TIME:
+            if trials < max_trails:
+                print("Sleep for {:d} secs".format(sleep_time))
+                time.sleep(sleep_time)
+                trials += 1
+                # running_time = time.time()
+                continue
+            # if time.time() - running_time < RUN_TIME:
+            else:
                 print("Cannot fetch {:s}".format(url))
                 return False
-            else:
-                print("Sleep for a while and try again")
-                print("Sleep for {:d} secs".format(1))
-                time.sleep(1)
-                running_time = time.time()
-                continue
           
 class AllValidDate(Criteria):
     """Return all valid images
@@ -345,25 +356,32 @@ class AllValidDate(Criteria):
         if not os.path.exists(self.save_folder):
             os.makedirs(self.save_folder)
 
-    def is_valid(self, metadata : Metadata):
+    def pre_valid_check(self, metadata : Metadata):
         metadata_obj = metadata.get_metadata()
         if self.use_valid_date:
             if metadata.date_taken() == None or metadata.date_taken() >= metadata.date_uploaded():
                 return False
         if metadata.is_img():
-            fetch_success = fetch_and_save_image(
-                metadata.get_path(),
-                metadata_obj.DOWNLOAD_URL,
-                MIN_EDGE=self.min_edge,
-                MIN_IMAGE_SIZE=self.min_size,
-                MAX_ASPECT_RATIO=self.max_aspect_ratio,
-            )
-            if fetch_success:
-                width, height = imagesize.get(metadata.get_path())
-                metadata_obj.WIDTH, metadata_obj.HEIGHT = width, height
-                metadata_obj.ASPECT_RATIO = max(width, height) / min(width, height)
-                return True
+            return True
         return False
+    
+    def post_valid_check(self, metadata: Metadata):
+        metadata_obj = metadata.get_metadata()
+        width, height = imagesize.get(metadata.get_path())
+        metadata_obj.WIDTH, metadata_obj.HEIGHT = width, height
+        metadata_obj.ASPECT_RATIO = max(width, height) / min(width, height)
+        return True
+
+    def fetch_one(self, metadata : Metadata):
+        metadata_obj = metadata.get_metadata()
+        fetch_success = fetch_and_save_image(
+            metadata.get_path(),
+            metadata_obj.DOWNLOAD_URL,
+            MIN_EDGE=self.min_edge,
+            MIN_IMAGE_SIZE=self.min_size,
+            MAX_ASPECT_RATIO=self.max_aspect_ratio,
+        )
+        return fetch_success
 
     def make_metadata(self, data_line, auto_line, line_num, hash_dict, exif_line, save_folder):
         # Overwrite so no exif is saved
@@ -372,14 +390,26 @@ class AllValidDate(Criteria):
     def has_enough(self, metadata_list):
         return False
 
+def get_flickr_folder(folder_location, idx):
+    return os.path.join(folder_location, str(idx))
+
+def get_flickr_image_folder(folder_location, idx):
+    folder = get_flickr_folder(folder_location, idx)
+    return os.path.join(folder, "images")
+
+def get_flickr_metadata_pickle_path(folder_location, idx):
+    folder = get_flickr_folder(folder_location, idx)
+    return os.path.join(folder, "metadata.pickle")
+
 class FlickrFolder():
-    def __init__(self, idx, folder_location, num_images=10000, last_index=None):
-        self.last_index = last_index
-        self.folder = os.path.join(folder_location, str(idx))
+    def __init__(self, idx, folder_location, num_images=10000):
+        # num_images is not the actual size but rather the split index
+        self.folder = get_flickr_folder(folder_location, idx)
         self.num_images = num_images
-        self.metadata_location = os.path.join(self.folder, "metadata.pickle")
-        self.image_folder = os.path.join(self.folder, "images")
+        self.metadata_location = get_flickr_metadata_pickle_path(folder_location, idx)
+        self.image_folder = get_flickr_image_folder(folder_location, idx)
         if not os.path.exists(self.image_folder):
+            print(f"make dir at {self.image_folder}")
             os.makedirs(self.image_folder)
     
     def copy_to_new_save_folder(self, idx, new_folder_location):
@@ -415,9 +445,9 @@ class FlickrFolder():
             meta.metadata.IMG_PATH = new_img_name
         save_obj_as_pickle(new_metadata_location, old_metadata_list)
     
-    def has_enough(self):
-        metadata_list = self.load_metadata()
-        return len(metadata_list) == self.num_images
+    # def has_enough(self):
+    #     metadata_list = self.load_metadata()
+    #     return len(metadata_list) == self.num_images
 
     def load_metadata(self):
         return load_pickle(self.metadata_location)
@@ -445,7 +475,7 @@ class FlickrAccessor():
     Wrap around a list of FlickrFolder object in order to access image metadata as a single list
     """
     def __init__(self, folders):
-        self.flickr_folders = [FlickrFolderAccessor(f) for f in folders]
+        self.flickr_folders = [FlickrFolderAccessor(folders[f_idx]) for f_idx in sorted(folders.keys())]
 
         self.total_length = 0
         self.num_images = len(self.flickr_folders[0])
@@ -498,8 +528,7 @@ class FlickrParser():
         self.save_folder = criteria.save_folder
         self.main_pickle_location = os.path.join(self.save_folder, "all_folders.pickle")
         
-        self.flickr_folders = load_pickle(self.main_pickle_location, default_obj=[])
-        self._check(self.flickr_folders)
+        self.flickr_folders = load_pickle(self.main_pickle_location, default_obj={})
 
     def copy_to_new_save_folder(self, new_save_folder):
         new_main_pickle_location = os.path.join(new_save_folder, "all_folders.pickle")
@@ -507,34 +536,22 @@ class FlickrParser():
         if loaded_result:
             return loaded_result
 
-        new_flickr_folders = []
-        for idx, folder in enumerate(self.flickr_folders):
-            folder.copy_to_new_save_folder(idx, new_save_folder)
-            new_folder = FlickrFolder(idx, new_save_folder, num_images=folder.num_images, last_index=folder.last_index)
-            new_flickr_folders.append(new_folder)
+        new_flickr_folders = {}
+        for folder_idx in enumerate(self.flickr_folders):
+            folder = self.flickr_folders[folder_idx]
+            folder.copy_to_new_save_folder(folder_idx, new_save_folder)
+            new_folder = FlickrFolder(folder_idx, new_save_folder, num_images=folder.num_images)
+            new_flickr_folders[folder_idx] = new_folder
         save_obj_as_pickle(new_main_pickle_location, new_flickr_folders)
         return new_flickr_folders
 
     def load_folders(self):
         return self.flickr_folders
 
-    def _check(self, flickr_folders):
-        lind_idx = 0
-        for folder_idx, flickr_folder in enumerate(flickr_folders):
-            if not flickr_folder.has_enough():
-                import pdb; pdb.set_trace()
-            elif flickr_folder.num_images != self.chunk_size:
-                import pdb; pdb.set_trace()
-            else:
-                lind_idx += flickr_folder.num_images
-        
-        folder_idx = int(lind_idx / self.chunk_size)
-        assert folder_idx == len(self.flickr_folders)
-    
     def fetch_images(self):
         if len(self.flickr_folders) > 0:
             print("Continue fetching images")
-            last_index = self.flickr_folders[-1].last_index
+            last_index = max(self.flickr_folders.keys()) * self.chunk_size
         else:
             print("Start fetching images")
             last_index = 0
@@ -560,34 +577,62 @@ class FlickrParser():
 
             zip_object = zip(f, auto_f, line_f, exif_f)
             zip_index = list(range(len(hash_dict.keys())))
+            # format = "%(asctime)s: %(message)s"
+            # logging.basicConfig(format=format, level=logging.INFO,
+            #                     datefmt="%H:%M:%S")
+            metadata_lists = {} # list of metadata
+            metadata_counts = {} # list of counts of downloaded (or attempted) metadata
+            # metadata_list = []
+            # flickr_folder = [FlickrFolder(len(self.flickr_folders), self.save_folder, num_images=self.chunk_size)]
+            lock = threading.Lock()
             
-            metadata_list = []
-            flickr_folder = FlickrFolder(len(self.flickr_folders), self.save_folder, num_images=self.chunk_size)
-            
-            
-            for i, (data_line, auto_line, line_num, exif_line) in tqdm(enumerate(zip_object)):
-                if i < last_index:
-                    continue
-                else:
-                    meta = self.criteria.make_metadata(data_line, auto_line, line_num, hash_dict, exif_line, flickr_folder.image_folder)
-                    if self.criteria.is_valid(meta):
-                        metadata_list.append(meta)
+            def download_image(i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts):
+                try:
+                    # print(f"Size current {len(metadata_list[0])}")
+                    if i % 5000 == 0:
+                        logging.info("Thread %i: curr iter", i)
+                    folder_idx = int(i / self.chunk_size)
+                    
+                    with lock:
+                        if not folder_idx in self.flickr_folders:
+                            self.flickr_folders[folder_idx] = FlickrFolder(folder_idx, self.save_folder, num_images=self.chunk_size)
+                    
+                    meta = self.criteria.make_metadata(data_line, auto_line, line_num, hash_dict, exif_line, get_flickr_image_folder(self.save_folder, folder_idx))
+                    if self.criteria.pre_valid_check(meta):
+                        fetch_success = self.criteria.fetch_one(meta)
+                        if fetch_success and self.criteria.post_valid_check(meta):
+                            with lock:
+                                if not folder_idx in metadata_lists:
+                                    metadata_lists[folder_idx] = []
+                                metadata_lists[folder_idx].append(meta)
+                    
+                    with lock:
+                        if not folder_idx in metadata_counts:
+                            metadata_counts[folder_idx] = 0
+                        metadata_counts[folder_idx] += 1
+                            
+                        if metadata_counts[folder_idx] == self.chunk_size:
+                            assert folder_idx in self.flickr_folders
+                            print(f"Save the metadata list (successful download ({len(metadata_lists[folder_idx])})) for {folder_idx * self.chunk_size} to {(1+folder_idx) * self.chunk_size} images at {self.flickr_folders[folder_idx].image_folder}")
+                            self.flickr_folders[folder_idx].save_metadata(metadata_lists[folder_idx])
+                            save_obj_as_pickle(self.main_pickle_location, self.flickr_folders)
+                            print(f"Updated at {self.main_pickle_location}")
+                            del metadata_lists[folder_idx]
+                except Exception as e:
+                    print(e)
 
-                    if len(metadata_list) == self.chunk_size:
-                        print(f"Save the metadata list for {i - self.chunk_size + 1} to {i + 1} images at {flickr_folder.metadata_location}")
-                        self._save_flickr_folder(flickr_folder, metadata_list, i)
-                        metadata_list = []
-                        flickr_folder = FlickrFolder(len(self.flickr_folders), self.save_folder, num_images=self.chunk_size)
+            with ThreadPoolExecutor(max_workers=128) as executor:
+                results = []            
+                for i, (data_line, auto_line, line_num, exif_line) in tqdm(enumerate(zip_object)):
+                    if i < last_index:
+                        continue
+                    else:
+                        results += [executor.submit(download_image, i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts)]
+                for cur_result in tqdm(as_completed(results), total=len(results)):
+                    cur_result.result()
 
             print(f"Finished all media objects.")
-            self._save_flickr_folder(flickr_folder, metadata_list, i)
     
-    def _save_flickr_folder(self, flickr_folder, metadata_list, i):
-        flickr_folder.save_metadata(metadata_list)
-        flickr_folder.last_index = i + 1
-        self.flickr_folders.append(flickr_folder)
-        save_obj_as_pickle(self.main_pickle_location, self.flickr_folders)
-        print(f"Updated at {self.main_pickle_location}")
 
 
 if __name__ == "__main__":

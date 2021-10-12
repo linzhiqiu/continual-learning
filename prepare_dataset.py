@@ -2,10 +2,15 @@
 # Then split the dataset to buckets sorted by time
 # Finally generate and save the CLIP features (normalized + unnormalized)
 
-# Example (with --new_folder_path): python prepare_dataset.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --new_folder_path images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0_july_5 --num_of_bucket 11 --model_name RN50;
-# Example (without transfer to --new_folder_path): python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50;
+# Example (transferring to --new_folder_path): python prepare_dataset.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --new_folder_path images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0_july_5 --num_of_bucket 11 --model_name RN50;
+# Example (without transferring to --new_folder_path): python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50;
 
 # July 7 (so far around 3M images july 19): python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_july_7 --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50;
+
+# Sep 21 (for new parallel script):
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50;
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50x4;
+# python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN101;
 
 # prepare features for older folders (feb 18 and jan 31)
 # python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all --min_size 10 --chunk_size 10000 --num_of_bucket 11 --model_name RN50 --new_folder_path /scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18;
