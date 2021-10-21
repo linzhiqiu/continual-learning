@@ -1,5 +1,5 @@
 # A script to parse flickr datasets/autotags
-# python large_scale_yfcc_download_parallel_new.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2;
+# python large_scale_yfcc_download_parallel.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2;
 from io import BytesIO
 import os
 import re
@@ -23,6 +23,12 @@ import imagesize
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import save_obj_as_pickle, load_pickle
 import threading
+import sys
+from objsize import get_deep_size
+import gc
+from profiler import deep_getsizeof
+
+MAX_WORKERS = 128 # You should change it with the numbers of workers you desire
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--img_dir", 
@@ -318,14 +324,14 @@ def fetch_and_save_image(img_path, url, MIN_EDGE=0, MAX_ASPECT_RATIO=None, MAX_N
             return True
         except:
             if trials < max_trails:
-                print("Sleep for {:d} secs".format(sleep_time))
+                # print("Sleep for {:d} secs".format(sleep_time))
                 time.sleep(sleep_time)
                 trials += 1
                 # running_time = time.time()
                 continue
             # if time.time() - running_time < RUN_TIME:
             else:
-                print("Cannot fetch {:s}".format(url))
+                # print("Cannot fetch {:s}".format(url))
                 return False
           
 class AllValidDate(Criteria):
@@ -476,15 +482,17 @@ class FlickrAccessor():
     """
     def __init__(self, folders):
         self.flickr_folders = [FlickrFolderAccessor(folders[f_idx]) for f_idx in sorted(folders.keys())]
-
         self.total_length = 0
-        self.num_images = len(self.flickr_folders[0])
-        for f in self.flickr_folders:
-            self.total_length += len(f)
+        self.image_index = []
+        for f_idx, f in enumerate(self.flickr_folders):
+            if f.metadata_list == None:
+                continue
+            else:
+                self.image_index += [(f_idx, i) for i in range(len(f))]
+                self.total_length += len(f)
 
     def __getitem__(self, idx):
-        f_idx = int(idx / self.num_images)
-        i_idx = idx % self.num_images
+        f_idx, i_idx = self.image_index[idx]
         return self.flickr_folders[f_idx][i_idx]
     
     def __len__(self):
@@ -510,6 +518,14 @@ def get_flickr_folder_location(args, new_folder_path=None):
         return get_flickr_parser(args).save_folder
     else:
         return new_folder_path
+
+def sizeof_fmt(num, suffix='B'):
+    ''' by Fred Cirera,  https://stackoverflow.com/a/1094933/1870254, modified'''
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f %s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f %s%s" % (num, 'Yi', suffix)
 
 class FlickrParser():
     """
@@ -575,22 +591,24 @@ class FlickrParser():
              open(self.lines_file, "r") as line_f, \
              open(self.exif_file, 'r') as exif_f:
 
+            for name, size in sorted(((name, deep_getsizeof(value, set())) for name, value in locals().items()),key= lambda x: -x[1])[:10]:
+                print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
+
             zip_object = zip(f, auto_f, line_f, exif_f)
             zip_index = list(range(len(hash_dict.keys())))
-            # format = "%(asctime)s: %(message)s"
-            # logging.basicConfig(format=format, level=logging.INFO,
-            #                     datefmt="%H:%M:%S")
             metadata_lists = {} # list of metadata
             metadata_counts = {} # list of counts of downloaded (or attempted) metadata
-            # metadata_list = []
-            # flickr_folder = [FlickrFolder(len(self.flickr_folders), self.save_folder, num_images=self.chunk_size)]
+
             lock = threading.Lock()
             
             def download_image(i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts):
                 try:
                     # print(f"Size current {len(metadata_list[0])}")
-                    if i % 5000 == 0:
-                        logging.info("Thread %i: curr iter", i)
+                    # if i % 100 == 0:
+                        # logging.info("Thread %i: curr iter", i)
+                        # for name, size in sorted(((name, sys.getsizeof(value)) for name, value in locals().items()),key= lambda x: -x[1]):
+                        #     print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
+                        # print(f"Size of metadata_lists is {get_deep_size(metadata_lists)}")
                     folder_idx = int(i / self.chunk_size)
                     
                     with lock:
@@ -613,23 +631,54 @@ class FlickrParser():
                             
                         if metadata_counts[folder_idx] == self.chunk_size:
                             assert folder_idx in self.flickr_folders
-                            print(f"Save the metadata list (successful download ({len(metadata_lists[folder_idx])})) for {folder_idx * self.chunk_size} to {(1+folder_idx) * self.chunk_size} images at {self.flickr_folders[folder_idx].image_folder}")
+                            print(f"Save the metadata list (successfully download ({len(metadata_lists[folder_idx])})) for {folder_idx * self.chunk_size} to {(1+folder_idx) * self.chunk_size} images at {self.flickr_folders[folder_idx].image_folder}")
                             self.flickr_folders[folder_idx].save_metadata(metadata_lists[folder_idx])
                             save_obj_as_pickle(self.main_pickle_location, self.flickr_folders)
                             print(f"Updated at {self.main_pickle_location}")
+                            metadata_lists[folder_idx] = None
                             del metadata_lists[folder_idx]
+                            gc.collect()
+                            for name, size in sorted(((name, deep_getsizeof(value, set())) for name, value in locals().items()),key= lambda x: -x[1]):
+                                print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
                 except Exception as e:
                     print(e)
+                return
 
-            with ThreadPoolExecutor(max_workers=128) as executor:
-                results = []            
-                for i, (data_line, auto_line, line_num, exif_line) in tqdm(enumerate(zip_object)):
-                    if i < last_index:
-                        continue
-                    else:
-                        results += [executor.submit(download_image, i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts)]
-                for cur_result in tqdm(as_completed(results), total=len(results)):
-                    cur_result.result()
+            # with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            #     # results = []            
+            #     # for i, (data_line, auto_line, line_num, exif_line) in tqdm(enumerate(zip_object)):
+            #     from iteration_utilities import grouper
+            #     chunk_idx = 0
+            #     images_per_chunk = 1000000
+            #     for chunk in grouper(enumerate(zip_object), images_per_chunk):
+            #         results = []
+            #         for i, (data_line, auto_line, line_num, exif_line) in chunk:
+            #             if i < last_index:
+            #                 continue
+            #             else:
+            #                 results += [executor.submit(download_image, i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts)]
+            #             # executor.submit(download_image, i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts).result()
+            #         for cur_result in tqdm(as_completed(results), total=len(results)):
+            #             cur_result.result()
+            #         print(f"Finish the {chunk_idx+1} chunk = {(chunk_idx+1)*images_per_chunk} images.")
+            #         chunk_idx += 1
+
+            from iteration_utilities import grouper
+            chunk_idx = 0
+            images_per_chunk = 1000000
+            for chunk in grouper(enumerate(zip_object), images_per_chunk):
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    results = []
+                    for i, (data_line, auto_line, line_num, exif_line) in chunk:
+                        if i < last_index:
+                            continue
+                        else:
+                            results += [executor.submit(download_image, i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts)]
+                        # executor.submit(download_image, i, data_line, auto_line, line_num, exif_line, lock, metadata_lists, metadata_counts).result()
+                    for cur_result in tqdm(as_completed(results), total=len(results)):
+                        cur_result.result()
+                    print(f"Finish the {chunk_idx+1} chunk = {(chunk_idx+1)*images_per_chunk} images.")
+                    chunk_idx += 1
 
             print(f"Finished all media objects.")
     
