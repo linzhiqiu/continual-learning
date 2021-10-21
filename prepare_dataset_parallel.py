@@ -12,7 +12,6 @@
 # python prepare_dataset_parallel.py --img_dir /data3/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --split_by_year True --model_name RN50x4 --new_folder_path /scratch/zhiqiu/yfcc100m_all_new_sep_21/
 # python prepare_dataset_parallel.py --img_dir /data3/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --split_by_year True --model_name RN101 --new_folder_path /scratch/zhiqiu/yfcc100m_all_new_sep_21/
 
-
 # without transfer to new folder (split to 11 equal size buckets)
 # python prepare_dataset_parallel.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50 
 # python prepare_dataset_parallel.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50x4

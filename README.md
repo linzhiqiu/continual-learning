@@ -38,22 +38,26 @@ And then you can download yfcc100M metadata to this folder by running:
 ```
   sh install_yfcc100m.sh
 ```
-To start downloading the YFCC100M images, we provide this python script (for single-threaded download):
-```
+<!-- To start downloading the YFCC100M images, we provide this python script (for single-threaded download): -->
+<!-- ```
   python large_scale_yfcc_download.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2;
-```
-The above script will download the Flickr images with (1) byte size larger than 10, (2) shorter edge larger than 120px, (3) maximum aspect ratio larger than 2 into (--img_dir). It will split images to multiple subfolders, each containing 10000 (--chunk_size) images. In the meantime, a pickle file will be saved at all_folders.pickle under img_dir. This pickle file after loading is a FlickrFolder() object (see [large_scale_yfcc_download.py](large_scale_yfcc_download.py) for details). All images you downloaded as well as their respective metadata can be accessed by this object. Note that the all_folders.pickle will be updated after downloading every (--chunk_size) images.
-
-To download at full speed (which requires more memory resources), we also provide a multi-threading version of the same python script:
+``` -->
+To start downloading the YFCC100M images, we provide this python script (for multi-threading download):
 ```
   python large_scale_yfcc_download_parallel.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2;
 ```
-The above script will download the Flickr images with parallel workers (MAX_WORKERS=128 as default). It will also split images to multiple subfolders, each containing at most 50000 (--chunk_size) images. The rest are the same as the above script. Note that if your memory is limited, the script might be killed occasionally. In that case, you just need to rerun the script and it will resume from the previous checkpoint.
+The above script will download the Flickr images with (1) byte size larger than 10, (2) shorter edge larger than 120 pixels, (3) maximum aspect ratio larger than 2 into (--img_dir). It will split images to multiple subfolders, each containing at most 50000 (--chunk_size) images. In the meantime, a pickle file will be saved at all_folders.pickle under (--img_dir). This pickle file after loading is a FlickrFolder() object (see [large_scale_yfcc_download.py](large_scale_yfcc_download.py) for details). All images you downloaded as well as their respective metadata can be accessed by this object. Note that the all_folders.pickle will be updated after downloading every (--chunk_size) images.
+
+<!-- To download at full speed (which requires more RAM resources), we also provide a multi-threading version of the same python script:
+```
+  python large_scale_yfcc_download_parallel.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2;
+``` -->
+The above script will download the Flickr images with parallel workers (MAX_WORKERS=128 as default). It will also split images to multiple subfolders, each containing at most 50000 (--chunk_size) images. The rest are the same as the above script. Note that if your RAM is limited, the script might be killed occasionally. In that case, you just need to rerun the script and it will resume from the previous checkpoint.
 
 
 ## Segment the temporal stream + CLIP feature extraction
 
-You can start recreate the temporal (uploading) stream of YFCC100M images for already downloaded images from last step, and split these YFCC100M images into a fixed number of buckets with equal size. After splitting the sorted stream into segments, you can generate the CLIP features for each images. These step can by done:
+You can start recreate the temporal (uploading) stream of YFCC100M images for already downloaded images from last step, and split these YFCC100M images into a fixed number of buckets with equal size. After splitting the sorted stream into segments, you can generate the CLIP features for each image. These step can by done:
 ```
   python prepare_dataset.py --img_dir /data3/zhiqiul/yfcc100m_all_new --min_size 10 --chunk_size 10000 --min_edge 120 --max_aspect_ratio 2 --num_of_bucket 11 --model_name RN50x4
 ```
