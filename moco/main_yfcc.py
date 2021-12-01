@@ -34,7 +34,7 @@ from torchvision.datasets.folder import default_loader
 def get_samples_from_data(data):
     bucket_dict = pickle.load(open(data, 'rb'))
     flickr_accessor = bucket_dict['flickr_accessor']
-    return [metadata.get_path() for metadata in flickr_accessor]
+    return [os.path.join(meta['IMG_DIR'], meta['IMG_PATH']) for meta in flickr_accessor]
 
 def get_yfcc_dataset_for_training(data, transforms):
     samples = get_samples_from_data(data)

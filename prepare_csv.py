@@ -1,5 +1,4 @@
 # A script to prepare labeled/unlabeled dataset files (in csv format)
-# Download all with valid date and min byte 10: python large_scale_yfcc_download.py --img_dir /project_data/ramanan/yfcc100m_all --min_size 10 --chunk_size 10000;
 from io import BytesIO
 import os
 import json
@@ -68,13 +67,11 @@ def write_to_csv(save_path,
     assert len(metadata_lst) == len(prefix_lst)
     assert len(prefix_lst[0]) == len(list_of_prefix_names)
     
-    fieldnames = ['emp_name', 'dept', 'birth_month']
     with open(save_path, mode='w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=list_of_prefix_names+list_of_metadata)
         writer.writeheader()
         for metadata, prefix in zip(metadata_lst, prefix_lst):
             metadata_as_dict = {name : metadata.__dict__[name] for name in list_of_metadata}
-            import pdb; pdb.set_trace()
             prefix_as_dict = {list_of_prefix_names[i] : prefix[i] for i in range(len(list_of_prefix_names))}
             prefix_as_dict.update(metadata_as_dict)
             writer.writerow(prefix_as_dict)

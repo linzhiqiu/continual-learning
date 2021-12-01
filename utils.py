@@ -1,26 +1,13 @@
 import pickle
 import os
 import numpy as np
+import json
 
 def makedirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
     else:
         print(path + " already exists.")
-
-def sort_metadata_by_date(metadata_list, date='date_uploaded', features=None):
-    if type(features) != type(None):
-        if type(features) == list:
-            feature_list = features
-        else:
-            feature_list = [features[i] for i in range(features.shape[0])]
-        sort_func = lambda x : getattr(x[0], date)()
-        all_meta_list_sorted = sorted(zip(metadata_list, feature_list), key=lambda x: sort_func(x))
-        return all_meta_list_sorted
-    else:
-        sort_func = lambda meta : getattr(meta, date)()
-        all_meta_list_sorted = sorted(metadata_list, key=lambda x: sort_func(x))
-        return all_meta_list_sorted
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -36,23 +23,46 @@ def divide(lst, n):
     """Divide successive n-sized chunks from lst."""
     return [list(c) for c in mit.divide(n, lst)]
 
+def save_as_json(json_location, obj):
+    with open(json_location, "w+") as f:
+        json.dump(obj, f)
+
+def load_json(json_location, default_obj=None):
+    if os.path.exists(json_location):
+        try:
+            with open(json_location, 'r') as f:
+                # import pdb; pdb.set_trace()
+                obj = json.load(f)
+            return obj
+        except:
+            print(f"Error loading {json_location}")
+            return default_obj
+    else:
+        return default_obj
+
 def save_obj_as_pickle(pickle_location, obj):
     pickle.dump(obj, open(pickle_location, 'wb+'), protocol=pickle.HIGHEST_PROTOCOL)
     print(f"Save object as a pickle at {pickle_location}")
 
 def load_pickle(pickle_location, default_obj=None):
     if os.path.exists(pickle_location):
-        return pickle.load(open(pickle_location, 'rb'))
-        # try:
-        #     return pickle.load(open(pickle_location, 'rb'))
-        # except ModuleNotFoundError:
-        #     # Hack to remove a no longer existed module
-        #     import sys, large_scale_yfcc_download
-        #     sys.modules['flickr_parsing'] = large_scale_yfcc_download
-        #     a = pickle.load(open(pickle_location, 'rb'))
-        #     del sys.modules['flickr_parsing']
-        #     save_obj_as_pickle(pickle_location, a)
-        #     # import pdb; pdb.set_trace()
-        #     return pickle.load(open(pickle_location, 'rb'))
+        # return pickle.load(open(pickle_location, 'rb'))
+        try:
+            return pickle.load(open(pickle_location, 'rb'))
+        except ModuleNotFoundError:
+            import sys, yfcc_download
+            # Hack to rename a module (from large_scale_yfcc_download to yfcc_download)
+            sys.modules['large_scale_yfcc_download_parallel'] = yfcc_download
+            sys.modules['large_scale_yfcc_download'] = yfcc_download
+            a = pickle.load(open(pickle_location, 'rb'))
+            save_obj_as_pickle(pickle_location, a)
+            return pickle.load(open(pickle_location, 'rb'))
+
+            # Hack to remove a no longer existed module (e.g., remove flickr_parsing)
+            # sys.modules['flickr_parsing'] = yfcc_download
+            # a = pickle.load(open(pickle_location, 'rb'))
+            # del sys.modules['flickr_parsing']
+            # save_obj_as_pickle(pickle_location, a)
+            # return pickle.load(open(pickle_location, 'rb'))
     else:
         return default_obj

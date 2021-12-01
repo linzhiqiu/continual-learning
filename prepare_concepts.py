@@ -166,7 +166,7 @@ def compose_pos_neg_dataset_dict(positive_dataset_dict, negative_dataset_dict, n
             score = positive_dataset_dict[label]['D'][i]
             clip_feature = positive_dataset_dict[label]['clip_features'][i]
             meta = positive_dataset_dict[label]['metadata'][i]
-            ID = meta.get_metadata().ID
+            ID = meta['ID']
             if ID in indices_dict:
                 import pdb; pdb.set_trace()
             indices_dict[ID] = {
@@ -198,7 +198,7 @@ def compose_pos_neg_dataset_dict(positive_dataset_dict, negative_dataset_dict, n
             score = negative_dataset_dict[label]['D'][i]
             clip_feature = negative_dataset_dict[label]['clip_features'][i]
             meta = negative_dataset_dict[label]['metadata'][i]
-            ID = meta.get_metadata().ID
+            ID = meta['ID']
             if ID in indices_dict:
                 continue
             else:
@@ -336,8 +336,8 @@ if __name__ == '__main__':
                 os.makedirs(save_folder_path_label)
             for meta in dataset_dict[b_idx][label]['metadata']:
                 original_path = meta.get_path()
-                ID = meta.get_metadata().ID
-                EXT = meta.get_metadata().EXT
+                ID = meta['ID']
+                EXT = meta['EXT']
                 transfer_path = os.path.join(save_folder_path_label, f"{ID}.{EXT}")
                 shutil.copy(original_path, transfer_path)
         print(f"Finish transferring images to {save_folder_path}")

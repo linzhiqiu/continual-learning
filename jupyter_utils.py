@@ -28,10 +28,9 @@ def plot_scores_jupyter(score_list, plot_mean=False):
 def plot_time_jupyter(metadata_list, mode='year', date='date_uploaded', plot_mean=False):
     buckets_dict = {}
 
-    for metadata in metadata_list:
-        meta = metadata.get_metadata()
+    for meta in metadata_list:
         if date == 'date_uploaded':
-            date_obj = datetime.utcfromtimestamp(int(meta.DATE_UPLOADED))
+            date_obj = datetime.utcfromtimestamp(int(meta['DATE_UPLOADED']))
         else:
             raise NotImplementedError()
 

@@ -76,7 +76,7 @@ def make_tensor_loader(items, batch_size, shuffle=False, num_workers=4):
     )
 
 def make_image_loader(items, batch_size, shuffle=False, fixed_crop=False, num_workers=4):
-    items = [(m.get_path(), l) for m, l in items]
+    items = [(os.path.join(m['IMG_DIR'], m['IMG_PATH']), l) for m, l in items]
     train_transform, test_transform = get_imgnet_transforms()
     if shuffle and not fixed_crop:
         transform = train_transform
