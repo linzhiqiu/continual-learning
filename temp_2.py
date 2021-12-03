@@ -232,11 +232,11 @@ def save_bucket_dict(flickr_folder_location, flickr_accessor, folder_paths, num_
     bucket_dict = {}
     for i, chunk in enumerate(chunks_of_indices):
         bucket_dict_i_path = os.path.join(folder_paths[i], f'bucket_{i}.pickle')
+        meta_list = [flickr_accessor[i] for i in chunk]
+        date_uploaded_list_i = [date_uploaded_list[i] for i in chunk]
         if os.path.exists(bucket_dict_i_path):
             bucket_dict[i] = load_pickle(bucket_dict_i_path)
         else:
-            meta_list = [flickr_accessor[i] for i in chunk]
-            date_uploaded_list_i = [date_uploaded_list[i] for i in chunk]
             bucket_dict[i] = {
                 'indices' : chunk,
                 'flickr_accessor' : meta_list,
@@ -249,6 +249,9 @@ def save_bucket_dict(flickr_folder_location, flickr_accessor, folder_paths, num_
         min_date, max_date = bucket_dict[i]['min_date'], bucket_dict[i]['max_date']
         date_str = f"For bucket {i}: Date range from {min_date} to {max_date}"
         print(date_str)
+        line_num_list = [int(meta['LINE_NUM']) for meta in meta_list]
+        min_line, max_line = min(line_num_list), max(line_num_list)
+        print(f"For bucket {i}: Line number range from {min_line} to {max_line}")
     # if not os.path.exists(bucket_dict_path):    
     # save_obj_as_pickle(bucket_dict_path, bucket_dict)
     # else:
@@ -265,7 +268,7 @@ if __name__ == '__main__':
         # import pdb; pdb.set_trace()
         # Save each bucket into a pickle object
         old_folder_paths = prepare_dataset.get_bucket_folder_paths(flickr_folder_location, args.num_of_bucket, args.split_by_year)
-        old_bucket_dict = prepare_dataset.save_bucket_dict(flickr_folder_location, flickr_accessor, old_folder_paths, args.num_of_bucket, args.split_by_year)
+        _, old_bucket_dict = prepare_dataset.save_bucket_dict(flickr_folder_location, flickr_accessor, old_folder_paths, args.num_of_bucket, args.split_by_year)
         length_of_dataset = 0
         for i in old_bucket_dict:
             print(f"{i}-th bucket has {len(old_bucket_dict[i]['all_metadata'])} images")
@@ -296,11 +299,12 @@ if __name__ == '__main__':
     print(f"{end - start} seconds are used to load all {len(flickr_accessor)} images")
     print(f"Size of dataset is {len(flickr_accessor)}")
     
-
+    # import pdb; pdb.set_trace()
     new_folder_paths = prepare_dataset.get_bucket_folder_paths(flickr_folder_location, args.num_of_bucket, args.split_by_year)
-    new_bucket_dict = prepare_dataset.save_bucket_dict(flickr_folder_location, flickr_accessor, new_folder_paths, args.num_of_bucket, args.split_by_year)
+    _, new_bucket_dict = prepare_dataset.save_bucket_dict(flickr_folder_location, flickr_accessor, new_folder_paths, args.num_of_bucket, args.split_by_year)
     # If you want to load the bucket_dict, use load_bucket_dict(flickr_folder_location, args.num_of_bucket, args.split_by_year)
     
+    exit(0)
     length_of_dataset = 0
     for i in new_bucket_dict:
         print(f"{i}-th bucket has {len(new_bucket_dict[i]['all_metadata'])} images")

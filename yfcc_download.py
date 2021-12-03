@@ -85,7 +85,7 @@ IDX_LIST = [
 IDX_TO_NAME = {i : IDX_LIST[i] for i in range(len(IDX_LIST))}
 # Other metadata that will be included in the dictionary:
 # AUTO_TAG_SCORES (dict): A dictionary of autotag_scores (key = category, value = confidence score in float)
-# LINE_NUM (int): Line Number
+# LINE_NUM (str): Line Number
 # HASH_VALUE (str):  Hash value
 # EXIF (str) : EXIF
 # IMG_PATH (str): Image path

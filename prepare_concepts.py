@@ -15,20 +15,20 @@ import shutil
 
 import argparse
 import prepare_dataset
-from utils import divide, normalize, load_pickle, save_obj_as_pickle
+from utils import divide, normalize, load_json, save_as_json
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--concept_group_dict",
                        default=None, type=str,
-                       help="You should run CLIP-ConceptGroups.ipynb to generate a concept_group_dict")
+                       help="You should run CLIP-ConceptGroups.ipynb to generate a concept_group_dict (in json format)")
 
 def get_dataset_dict_path(concept_group_dict):
     """Save dataset metadata + features at this path
     """
     save_path = get_save_path(concept_group_dict)
-    return os.path.join(save_path, "dataset.pickle")
+    return os.path.join(save_path, "dataset.json")
 
 def get_dataset_name(concept_group_dict):
     return "-".join([concept_group_dict['GROUPNAME'], concept_group_dict["USERNAME"], concept_group_dict['DATE']])
@@ -42,7 +42,7 @@ def get_concept_group_dict_path(concept_group_dict):
     """Save concept_group_dict at this path
     """
     save_path = get_save_path(concept_group_dict)
-    return os.path.join(save_path, "concept_group_dict.pickle")
+    return os.path.join(save_path, "concept_group_dict.json")
 
 def prepare_dataset_folder(concept_group_dict):
     save_path = get_save_path(concept_group_dict)
@@ -53,14 +53,14 @@ def prepare_dataset_folder(concept_group_dict):
             os.rmdir(save_path)
             return
         else:
-            concept_group_dict_saved = load_pickle(concept_group_dict_path)
+            concept_group_dict_saved = load_json(concept_group_dict_path)
             if concept_group_dict_saved == concept_group_dict:
                 print('Dataset already exists')
             else:
                 print(f'Dataset already exists at {save_path} and has conflicting options. Please double check.')
     else:
         os.makedirs(save_path)
-        save_obj_as_pickle(concept_group_dict_path, concept_group_dict)
+        save_as_json(concept_group_dict_path, concept_group_dict)
         for bucket_idx in range(concept_group_dict['NUM_OF_BUCKETS']):
             for concept in concept_group_dict['GROUP']:
                 os.makedirs(os.path.join(save_path, str(bucket_idx), concept))
@@ -234,7 +234,7 @@ if __name__ == '__main__':
     args = argparser.parse_args()
 
     start = time.time()
-    cg = load_pickle(args.concept_group_dict)
+    cg = load_json(args.concept_group_dict)
     if cg == None:
         print("Concept group dict does not exist. Please run CLIP-ConceptGroups.ipynb first.")
     
@@ -248,7 +248,7 @@ if __name__ == '__main__':
     dataset_dict_save_path = get_dataset_dict_path(cg)
     if os.path.exists(dataset_dict_save_path):
         print(f"{dataset_dict_save_path} already exists.")
-        dataset_dict = load_pickle(dataset_dict_save_path)
+        dataset_dict = load_json(dataset_dict_save_path)
     else:
         dataset_dict = {}
         print(f"Collecting images for {get_dataset_name(cg)}.. ")
@@ -280,10 +280,10 @@ if __name__ == '__main__':
                                             )
             save_folder_path = os.path.join(save_path, f'{b_idx}')
             dataset_dict[b_idx] = {}
-            dataset_dict_i_path = os.path.join(save_path, f"dataset_dict_{b_idx}.pickle")
+            dataset_dict_i_path = os.path.join(save_path, f"dataset_dict_{b_idx}.json")
             if os.path.exists(dataset_dict_i_path):
                 print(f"Exists: {dataset_dict_i_path}")
-                dataset_dict[b_idx] = load_pickle(dataset_dict_i_path)
+                dataset_dict[b_idx] = load_json(dataset_dict_i_path)
                 continue
             else:
                 print(f"Starting querying for bucket {b_idx}. Result will be saved at {dataset_dict_i_path}")
@@ -321,10 +321,10 @@ if __name__ == '__main__':
 
             if len(dataset_dict[b_idx].keys()) == 0:
                 import pdb; pdb.set_trace()
-            save_obj_as_pickle(dataset_dict_i_path, dataset_dict[b_idx])
+            save_as_json(dataset_dict_i_path, dataset_dict[b_idx])
             print(f"Save at {dataset_dict_i_path}")
         
-        save_obj_as_pickle(dataset_dict_save_path, dataset_dict)
+        save_as_json(dataset_dict_save_path, dataset_dict)
         print(f"Save at {dataset_dict_save_path}")
 
     for b_idx, folder_path in enumerate(folder_paths):
@@ -335,7 +335,7 @@ if __name__ == '__main__':
             if not os.path.exists(save_folder_path_label):
                 os.makedirs(save_folder_path_label)
             for meta in dataset_dict[b_idx][label]['metadata']:
-                original_path = meta.get_path()
+                original_path = os.path.join(meta['IMG_DIR'], meta['IMG_PATH'])
                 ID = meta['ID']
                 EXT = meta['EXT']
                 transfer_path = os.path.join(save_folder_path_label, f"{ID}.{EXT}")

@@ -7,27 +7,15 @@ from PIL import Image
 import numpy as np
 import time
 
-from utils import load_pickle, normalize
+from utils import normalize
 import faiss
-
-MAX_SIZE = 1000000
-# MAX_SIZE = 100000
-
-def _get_flickr_folder(folder_path):
-    return os.path.join(folder_path, "all_folders.pickle")
-
-def _get_feature_name(folder_path, model_name, normalize=True):
-    if normalize:
-        normalize_str = "_normalized"
-    else:
-        normalize_str = ""
-    return os.path.join(folder_path, f"features_{model_name.replace(os.sep, '_')}{normalize_str}.pickle")
 
 def _path_iterator_for_numpy(paths, mapping):
     # mapping is the selected indices to return
     cur_count = 0
     for path in paths:
-        matrix = load_pickle(path)
+        with open(path, 'rb') as f:
+            matrix = np.load(f)
         new_count = cur_count + matrix.shape[0]
         cur_mapping = list(filter(lambda x : x < new_count and x >= cur_count, mapping))
         relative_cur_mapping = [i - cur_count for i in cur_mapping]
@@ -46,7 +34,8 @@ def aggregate_for_numpy(paths, mapping):
     total_matrix = None
     cur_count = 0
     for path in paths:
-        matrix = load_pickle(path)
+        with open(path, 'rb') as f:
+            matrix = np.load(f)
         new_count = cur_count + matrix.shape[0]
         cur_mapping = list(filter(lambda x : x < new_count and x >= cur_count, mapping))
         relative_cur_mapping = [i - cur_count for i in cur_mapping]
@@ -59,7 +48,7 @@ def aggregate_for_numpy(paths, mapping):
     return total_matrix
 
 def aggregate_for_lists(lists, mapping):
-    """Return a list of selected features indicated by mapping
+    """Return a list of selected features indicated by mapping (similar to aggregate for numpy)
         Args:
             paths (list of features)
             mapping (indices to select)
@@ -82,15 +71,10 @@ def _get_total_feature_length(paths):
     """
     feature_count = 0
     for path in paths:
-        matrix = load_pickle(path)
+        with open(path, 'rb') as f:
+            matrix = np.load(f)
         feature_count += matrix.shape[0]
     return feature_count
-    
-def _matrix_iterator(matrix, chunk_size):
-    """Generator for matrices (splitted to [chunk_size] chunks)
-    """
-    for i0 in range(0, matrix.shape[0], chunk_size):
-        yield matrix[i0:i0 + chunk_size]
 
 def _chunk_iterator(length, chunk_size):
     """Generator for lists ([0,...,length] splitted to [chunk_size] chunks)
