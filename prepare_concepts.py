@@ -238,9 +238,6 @@ if __name__ == '__main__':
     else:
         bucket_dict = load_json(cg['BUCKET_DICT_PATH'])
         bucket_indices = sorted(list(bucket_dict.keys()), key=lambda idx: int(idx))
-        print(bucket_indices)
-        bucket_dict[bucket_idx]['folder_path']
-        
         save_path = get_save_path(cg) # The main save folder
         
         dataset_dict = {}

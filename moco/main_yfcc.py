@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# You will need 4 GPUs for the below script: python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.pickle --model_folder /data3/zhiqiul/yfcc_moco_models/july_10_bucket_11_idx_0_gpu_4/ --arch resnet50 -j 32 --lr 0.03 --batch-size 128 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 import argparse
 import builtins
 import math
@@ -28,13 +27,14 @@ import moco.loader
 import moco.builder
 
 # Added
-import pickle
+import json
 from torchvision.datasets.folder import default_loader
 
 def get_samples_from_data(data):
-    bucket_dict = pickle.load(open(data, 'rb'))
-    flickr_accessor = bucket_dict['flickr_accessor']
-    return [os.path.join(meta['IMG_DIR'], meta['IMG_PATH']) for meta in flickr_accessor]
+    with open(data, 'r') as f:
+        bucket_dict = json.load(f)
+    all_metadata = bucket_dict['all_metadata']
+    return [os.path.join(meta['IMG_DIR'], meta['IMG_PATH']) for meta in all_metadata]
 
 def get_yfcc_dataset_for_training(data, transforms):
     samples = get_samples_from_data(data)
@@ -93,10 +93,8 @@ parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-# parser.add_argument('--world-size', default=-1, type=int,
 parser.add_argument('--world-size', default=1, type=int,
                     help='number of nodes for distributed training')
-# parser.add_argument('--rank', default=-1, type=int,
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
 parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
@@ -159,6 +157,7 @@ def main():
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
+    print(f"ngpus_per_node is {ngpus_per_node}")
     if args.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
         # needs to be adjusted accordingly
@@ -198,7 +197,6 @@ def main_worker(gpu, ngpus_per_node, args):
         models.__dict__[args.arch],
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     # print(model)
-
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
         # should always set the single device scope, otherwise,

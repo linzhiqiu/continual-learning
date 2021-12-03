@@ -173,40 +173,29 @@ The retrieved images will then be saved under **SAVE_PATH/NAME/**.
 ## CSV files preparation
 You can export the metadata to CSV files via prepare_csv.py.
 
-## MoCo V2 Pre-training
-You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After running the above steps, you can specify a bucket of the temporal YFCC100 image stream to pre-train a MoCo V2 model. For more details about training MoCo, please refer to their [official repository](https://github.com/facebookresearch/moco). For example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the --data flag to your local file location that saves the bucket of image metadata; and modify the --model_folder to where you want the MoCo V2 model to be saved):
+## MoCo V2 pre-training on single bucket
+You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After running the above steps, you can specify a bucket of the temporal YFCC100M image stream to pre-train a MoCo V2 model. For more details about training MoCo, please refer to their [official repository](https://github.com/facebookresearch/moco). For example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the --data flag to your local file location that saves the bucket of image metadata; and modify the --model_folder to where you want the MoCo V2 model to be saved):
 <!-- ```
   python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.pickle --model_folder /data3/zhiqiul/yfcc_moco_models/july_6_bucket_11_idx_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 ``` -->
 ```
-  python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_by_year/2004/bucket_0.json --model_folder /data3/zhiqiul/yfcc_moco_models/sep_21_year_2004_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
+  python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.json --model_folder /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 ```
 The above script requires 8 (RTX 2080) GPUs. You can shrink the batch size if you have fewer available GPUs.
-## Data Cleaning with MTurk/Manual Inspection
-TODO.
 
 ## Classifier Training.
 TODO. Maybe work with avalanche.
-<!-- #### Learning Results with random cropping
 
-With **random cropping**, we can still train network to predict random horizontal reflections on Bayer-demosaiced + JPEG compressed randomly generated gaussian images. We use a cropping size of 512, and in order to eliminate the chance of the network cheating by utilizing the boundary of images (e.g., JPEG edge artifacts), we crop from the center (544, 544) of (576, 576) images. The results again followed our prediction in paper, and they are shown in the following table:
-
-| Image Processing | Image Size | Crop Size| Test Accuracy  |  
-|------------------|------------|----|----------------|
-| Bayer-Demosaicing| 576 |    512    | 50%  |
-| JPEG Compression | 576 |    512    | 50%  | 
-| **Both**             | **576** |    **512**   | **99%**  |   -->
-
-<!-- ### Citation
+### Citation
 If this work is useful for your research, please cite our paper:
 ```
-@InProceedings{chirality20,
-  title={Visual Chirality},
-  author = {Zhiqiu Lin and Jin Sun and Abe Davis and Noah Snavely},
-  booktitle={Computer Vision and Pattern Recognition (CVPR)},
-  year={2020}
+@inproceedings{lin2021clear,
+  title={The CLEAR Benchmark: Continual LEArning on Real-World Imagery},
+  author={Lin, Zhiqiu and Shi, Jia and Pathak, Deepak and Ramanan, Deva},
+  booktitle={Thirty-fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
+  year={2021}
 }
-``` -->
+```
 
 ### License
 This code is freely available for free non-commercial use, and may be redistributed under these conditions. 
