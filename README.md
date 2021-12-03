@@ -95,8 +95,10 @@ Caveat: If your RAM is limited, the script might be killed occasionally. In that
 You can recreate the temporal (uploading) stream of YFCC100M images for already downloaded images by [prepare_dataset.py](prepare_dataset.py). To use this script, you should supply with the same list of arguments from last step, plus three additional arguments:
 - *--split_by_year* (default = False):
    - If set to True, split the image (upload) stream to 11 buckets by year from 2004 to 2014 (note that each year may have different number of images). If set to False, then evenly split to **num_of_buckets** buckets (see next argument). 
+- *--split_by_time* (default = None):
+   - By default it is None. Or you can set it to a json file with the desired time period for each bucket. You can find an example for such json file at [clear_10_time.json](clear_10_time.json).
 - *--num_of_bucket* (default = 11):
-   - If **split_by_year** is set to False, then split to **num_of_bucket** equal-sized buckets.
+   - If **split_by_year** is set to False and **split_by_time** is set to None, then split to **num_of_bucket** equal-sized buckets.
 - *--model_name* (default = RN50):
    - The name of pre-trained CLIP model.
    - For now, we only support 'RN50', 'RN50x4', 'RN101', and 'ViT-B/32'. You may check whether OpenAI have released new pre-trained models in their [repo](https://github.com/openai/CLIP).
@@ -105,21 +107,68 @@ Here is an example script following the arguments from last step to split images
 ```
   python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --split_by_year True --model_name RN101
 ```
-The above script will (1) sort the downloaded YFCC100M images by upload timestamp, (2) Split the stream by year from 2004 to 2014, (3) generate the CLIP features for each image in each bucket with RN101 (resnet101) model. 
+The above script will (1) sort the downloaded YFCC100M images by upload timestamp, (2) Split the stream by year from 2004 to 2014, (3) generate the CLIP features for each image in each bucket with RN101 (resnet101) model. After the script is finished, you can find a json file containing all the bucket information at **img_dir**/bucket_by_year.json, for example:
+```
+/scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_by_year.json
+```
 
 You can also split to equal-sized buckets via:
 ```
   python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --split_by_year False --num_of_buckets 11 --model_name RN101
 ```
+This will produce a json file at **img_dir**/bucket_**num_of_buckets**.json, for example:
+```
+/scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11.json
+```
+Additionally, you can also specify the time period for each segment in a json file such as [clear_10_time.json](clear_10_time.json):
+```
+  python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --split_by_year False --split_by_time ./clear_10_time.json --model_name RN101
+```
+This will produce a json file at **img_dir**/bucket_**name_of_json_file**.json, for example:
+```
+/scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_clear_10_time.json
+```
 
 <!-- If you need to move the downloaded files to another location before you start running any experiments, you can specify the (--new_folder_path) flag. The reason that you must use this script to transfer the folder is because you cannot simply copy the downloaded folders: The metadata objects contain absolute paths to the image files. Check out the comments in [prepare_dataset.py](prepare_dataset.py) for more details. -->
 
-# Visio-Linguistic dataset curation with CLIP
+# Visio-linguistic dataset curation with CLIP
 ## Prompt Engineering with CLIP
-Once you download the dataset and extract the CLIP features, you can use the interactive jupyter notebook ([CLIP-PromptEngineering.ipynb](CLIP-PromptEngineering.ipynb)) to perform image retrival and try out different prompts for your visual concepts of interest! Please follow the instruction in the notebook and change the folder paths to your local directories. 
+Once you download the dataset and extract the CLIP features, you can use the interactive jupyter notebook ([CLIP-PromptEngineering.ipynb](CLIP-PromptEngineering.ipynb)) to perform image retrival and try out different prompts for your visual concepts of interest! Please follow the instruction in the notebook and change to your local path to bucket_dict json file generated from last step. 
 
 ## Image Retrieval with a group of visual concepts
-Once you find a list of engineered prompts for different visual concepts, you may collect a multi-class classification dataset, you should use another jupyter notebook ([CLIP-ConceptGroups.ipynb](CLIP-ConceptGroups.ipynb)) to collect images with respect to a group of visual concepts. You can supply the dataset configurations such as the class names, number of images to retrieve per class, etc. in the notebook, and the notebook will print out scripts you can run in your terminal to start data collection.
+Once you find a list of engineered prompts for different visual concepts, you may retrieve images for all the prompts at once with [prepare_concepts.py](prepare_concepts.py). Before doing so, you should input the prompts to a json file as well as specifying all parameters for collecting the dataset. One such example is [clear_10_config.json](clear_10_config.json), and here is an explanation for all the configurations:
+```
+{
+    "NAME" : "CLEAR10-TEST", # Name your own dataset
+    "PREFIX" : "", # A prefix to all visual concepts, such as "a photo of"
+    "ALLOW_OVERLAP" : 0, # If set to 0, images appear in multiple categories will be removed. Otherwise, keep all top-scoring images retrieved per concept.
+    "BUCKET_DICT_PATH" : "/scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11.json", # The path to the bucket_dict created by prepare_dataset.py
+    "CLIP_MODEL" : "RN101", # The pre-trained model used when extracting CLIP features
+    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET" : 600, # The number of images to retrieve per class per bucket
+    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET_TO_QUERY" : 16000, # The number of images to query (this number must be larger than the above).
+    "BACKGROUND" : 1, # If set to 1, add an additional background class consisting of negative samples collected per concept. If set to 0, then no background class will be collected.
+    "NEGATIVE_RATIO" : 0.1, # The ratio of negative samples per class to keep
+    "SAVE_PATH" : "/data3/zhiqiul/clear_datasets", # The images will be saved at this folder.
+    "GROUP" : # A group of prompts for each visual concept
+    [
+        "laptop",
+        "camera",
+        "bus",
+        "sweater",
+        "dress",
+        "racing",
+        "hockey",
+        "cosplay",
+        "baseball",
+        "soccer"
+    ]
+}
+```
+After you modify this json file (or create your own), you can start collecting via:
+```
+  python prepare_concepts.py --concept_group_dict ./clear_10_config.json
+```
+The retrieved images will then be saved under **SAVE_PATH/NAME/**.
 
 ## CSV files preparation
 You can export the metadata to CSV files via prepare_csv.py.

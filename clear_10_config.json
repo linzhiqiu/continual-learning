@@ -1,0 +1,24 @@
+{
+    "NAME": "CLEAR10-TEST",
+    "PREFIX": "",
+    "ALLOW_OVERLAP": 0,
+    "BUCKET_DICT_PATH": "/scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11.json",
+    "CLIP_MODEL": "RN101",
+    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET": 600,
+    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET_TO_QUERY": 16000,
+    "BACKGROUND": 1,
+    "NEGATIVE_RATIO": 0.1,
+    "SAVE_PATH": "/data3/zhiqiul/clear_datasets",
+    "GROUP": [
+        "laptop",
+        "camera",
+        "bus",
+        "sweater",
+        "dress",
+        "racing",
+        "hockey",
+        "cosplay",
+        "baseball",
+        "soccer"
+    ]
+}

@@ -24,7 +24,6 @@ from utils import save_as_json, load_json
 import threading
 import sys
 import time
-from temp import FlickrFolder, Metadata, MetadataObject
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--img_dir", 

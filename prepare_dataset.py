@@ -56,14 +56,6 @@ argparser.add_argument("--model_name",
                        default='RN50', choices=clip.available_models(),
                        help="The CLIP model architecture to use")
 
-# def get_knearest_models_func(folder_path, clip_model_name, num_of_bucket, model, preprocess):
-#     folder_paths = get_bucket_folder_paths(folder_path, num_of_bucket)
-#     def knearest_func(bucket_idx):
-#         clip_features_normalized_paths = get_clip_features_normalized_paths(folder_paths[bucket_idx], clip_model_name)
-#         k_near_faiss = KNearestFaissFeatureChunks(clip_features_normalized_paths, model, preprocess)
-#         return k_near_faiss
-#     return knearest_func
-
 def get_knearest_models_func(bucket_dict, clip_model_name, device='cpu'):
     """Return a function knearest_func: bucket_index (int) -> KNearestFaissFeatureChunks (for CLIP-based retrieval)
     """
