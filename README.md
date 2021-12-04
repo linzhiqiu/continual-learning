@@ -139,17 +139,38 @@ Once you download the dataset and extract the CLIP features, you can use the int
 Once you find a list of engineered prompts for different visual concepts, you may retrieve images for all the prompts at once with [prepare_concepts.py](prepare_concepts.py). Before doing so, you should input the prompts to a json file as well as specifying all parameters for collecting the dataset. One such example is [clear_10_config.json](clear_10_config.json), and here is an explanation for all the configurations:
 ```
 {
-    "NAME" : "CLEAR10-TEST", # Name your own dataset
-    "PREFIX" : "", # A prefix to all visual concepts, such as "a photo of"
-    "ALLOW_OVERLAP" : 0, # If set to 0, images appear in multiple categories will be removed. Otherwise, keep all top-scoring images retrieved per concept.
-    "BUCKET_DICT_PATH" : "/scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11.json", # The path to the bucket_dict created by prepare_dataset.py
-    "CLIP_MODEL" : "RN101", # The pre-trained model used when extracting CLIP features
-    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET" : 600, # The number of images to retrieve per class per bucket
-    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET_TO_QUERY" : 16000, # The number of images to query (this number must be larger than the above).
-    "BACKGROUND" : 1, # If set to 1, add an additional background class consisting of negative samples collected per concept. If set to 0, then no background class will be collected.
-    "NEGATIVE_RATIO" : 0.1, # The ratio of negative samples per class to keep
-    "SAVE_PATH" : "/data3/zhiqiul/clear_datasets", # The images will be saved at this folder.
-    "GROUP" : # A group of prompts for each visual concept
+    # Name your own dataset
+    "NAME" : "CLEAR10-TEST",
+
+    # A prefix to all visual concepts, such as "a photo of"
+    "PREFIX" : "", 
+    
+    # If set to 0, images appear in multiple categories will be removed. Otherwise, keep all top-scoring images retrieved per concept.
+    "ALLOW_OVERLAP" : 0, 
+
+    # The path to the bucket_dict created by prepare_dataset.py
+    "BUCKET_DICT_PATH" : "/scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11.json",
+
+    # The pre-trained model used when extracting CLIP features
+    "CLIP_MODEL" : "RN101", 
+
+    # The number of images to retrieve per class per bucket
+    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET" : 600,
+
+    # The number of images to query (this number must be larger than the above)
+    "NUM_OF_IMAGES_PER_CLASS_PER_BUCKET_TO_QUERY" : 16000,
+
+    # If set to 1, add an additional background class consisting of negative samples collected per concept. If set to 0, then no background class will be collected.
+    "BACKGROUND" : 1, 
+
+    # The ratio of negative samples retrieved per class to keep
+    "NEGATIVE_RATIO" : 0.1,
+
+    # The images will be saved at this folder.
+    "SAVE_PATH" : "/data3/zhiqiul/clear_datasets",
+
+    # A group of prompts for each visual concept
+    "GROUP" :
     [
         "laptop",
         "camera",
@@ -164,29 +185,26 @@ Once you find a list of engineered prompts for different visual concepts, you ma
     ]
 }
 ```
-After you modify this json file (or create your own), you can start collecting via:
+After you modify this [json file](clear_10_config.json) (or create your own), you can retrieve the images via:
 ```
   python prepare_concepts.py --concept_group_dict ./clear_10_config.json
 ```
-The retrieved images will then be saved under **SAVE_PATH/NAME/**.
+The retrieved images will then be saved under **SAVE_PATH/NAME/**
 
 ## CSV files preparation
 You can export the metadata to CSV files via prepare_csv.py.
 
 ## MoCo V2 pre-training on single bucket
-You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After running the above steps, you can specify a bucket of the temporal YFCC100M image stream to pre-train a MoCo V2 model. For more details about training MoCo, please refer to their [official repository](https://github.com/facebookresearch/moco). For example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the --data flag to your local file location that saves the bucket of image metadata; and modify the --model_folder to where you want the MoCo V2 model to be saved):
-<!-- ```
-  python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.pickle --model_folder /data3/zhiqiul/yfcc_moco_models/july_6_bucket_11_idx_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
-``` -->
+You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After you download the images and segment them into buckets, you can specify a bucket from the stream to pre-train a MoCo V2 model. For more details about training MoCo, please refer to their [official repository](https://github.com/facebookresearch/moco). For example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the --data flag to your local file location that saves the bucket of image metadata; and modify the --model_folder to where you want the MoCo V2 model to be saved):
 ```
   python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.json --model_folder /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 ```
 The above script requires 8 (RTX 2080) GPUs. You can shrink the batch size if you have fewer available GPUs.
 
-## Classifier Training.
+# Classifier Training.
 TODO. Maybe work with avalanche.
 
-### Citation
+# Citation
 If this work is useful for your research, please cite our paper:
 ```
 @inproceedings{lin2021clear,
@@ -197,6 +215,6 @@ If this work is useful for your research, please cite our paper:
 }
 ```
 
-### License
+# License
 This code is freely available for free non-commercial use, and may be redistributed under these conditions. 
 Third-party datasets and softwares are subject to their respective licenses. 
