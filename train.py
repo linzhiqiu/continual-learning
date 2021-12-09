@@ -1,9 +1,7 @@
 import training_utils
 from utils import load_pickle, save_obj_as_pickle
-# from prepare_clip_dataset import QUERY_TITLE_DICT, LABEL_SETS
 import random
 import argparse
-# from analyze_feature_variation import argparser, get_dataset_folder_paths
 from tqdm import tqdm
 import copy
 import time
@@ -50,6 +48,8 @@ HYPER_DICT = {
     'linear_tuned_2': HyperParameter('linear', epochs=100, step=45, batch_size=256, lr=0.5, weight_decay=0.),
     'linear_tuned': HyperParameter('linear', epochs=100, step=60, batch_size=256, lr=1., weight_decay=0.),
     'linear': HyperParameter('linear', epochs=100, step=60, batch_size=256, lr=0.1, weight_decay=0.),
+    'linear_tuned_batch_8': HyperParameter('linear', epochs=100, step=60, batch_size=8, lr=1., weight_decay=0.),
+    'linear_batch_8': HyperParameter('linear', epochs=100, step=60, batch_size=8, lr=0.1, weight_decay=0.),
     'cnn': HyperParameter('cnn', epochs=100, step=60, batch_size=64, lr=0.1, weight_decay=1e-5),
     'cnn_lower_lr': HyperParameter('cnn', epochs=100, step=30, batch_size=64, lr=0.01, weight_decay=1e-5),
 }
@@ -87,6 +87,8 @@ TRAIN_MODES_CATEGORY = {
     'raw_feature': TrainMode('cnn_feature', pretrained_weight=None, network_type='linear'),
     'moco_v2_yfcc_feb18_bucket_0_gpu_8_linear': TrainMode('cnn_feature', pretrained_weight='moco_yfcc_feb18_gpu_8_bucket_0', network_type='linear'),
     'moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned': TrainMode('cnn_feature', pretrained_weight='moco_yfcc_feb18_gpu_8_bucket_0', network_type='linear_tuned'),
+    'moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_batch_8': TrainMode('cnn_feature', pretrained_weight='moco_yfcc_feb18_gpu_8_bucket_0', network_type='linear_batch_8'),
+    'moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_batch_8': TrainMode('cnn_feature', pretrained_weight='moco_yfcc_feb18_gpu_8_bucket_0', network_type='linear_tuned_batch_8'),
     'moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_2': TrainMode('cnn_feature', pretrained_weight='moco_yfcc_feb18_gpu_8_bucket_0', network_type='linear_tuned_2'),
     'moco_v2_imgnet_mlp': TrainMode('cnn_feature', pretrained_weight='moco_imgnet', network_type='mlp'),
     'moco_v2_imgnet_mlp_tuned': TrainMode('cnn_feature', pretrained_weight='moco_imgnet', network_type='mlp_tuned'),
@@ -382,7 +384,7 @@ def make_model(train_mode, input_size=1024, output_size=1000):
         print(f"Using a mlp network with input size {input_size}")
         mlp = MLP(input_size, 2048, output_size)
         return mlp
-    elif network_type in ['linear' , 'linear_tuned', 'linear_tuned_2']:
+    elif network_type in ['linear' , 'linear_tuned', 'linear_tuned_2', 'linear_batch_8', 'linear_tuned_batch_8']:
         print(f"Using a single linear layer")
         fc = torch.nn.Linear(input_size, output_size)
         # import pdb; pdb.set_trace()

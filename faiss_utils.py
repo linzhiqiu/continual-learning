@@ -147,12 +147,13 @@ def knn_ground_truth(xq, db_iterator, k):
 
 
 class KNearestFaissFeatureChunks():
-    def __init__(self, clip_features_normalized_paths, model, preprocess):
+    def __init__(self, clip_features_normalized_paths, model, preprocess, device='cpu'):
         self.clip_features_normalized_paths = clip_features_normalized_paths
         self.total_feature_num = _get_total_feature_length(self.clip_features_normalized_paths)
         print(f"Current chunk has {self.total_feature_num} features")
         self.model = model
         self.preprocess = preprocess
+        self.device = device
     
     def grab_bottom_query_indices(self, query, start_idx=0, end_idx=2000):
         start = time.time()
@@ -174,8 +175,8 @@ class KNearestFaissFeatureChunks():
         
     def get_normalized_text_feature(self, query="a cat"):
         with torch.no_grad():
-            text = clip.tokenize([query])
-            text_feature = self.model.encode_text(text).numpy()
+            text = clip.tokenize([query]).to(self.device)
+            text_feature = self.model.encode_text(text).cpu().numpy()
         return normalize(text_feature.astype(np.float32))
 
     def get_clip_score(self, image_path, query):
@@ -188,8 +189,8 @@ class KNearestFaissFeatureChunks():
     
     def get_normalized_image_feature(self, image_path):
         with torch.no_grad():
-            image = self.preprocess(Image.open(image_path)).unsqueeze(0)
-            image_feature = self.model.encode_image(image).numpy()
+            image = self.preprocess(Image.open(image_path)).unsqueeze(0).to(self.device)
+            image_feature = self.model.encode_image(image).cpu().numpy()
         return normalize(image_feature.astype(np.float32))
 
     def k_nearest(self, feature, k=4):
@@ -212,6 +213,7 @@ class KNearestFaissFeatureChunks():
             end_remove = time.time()
             print(f"{end_remove-start:.4f} seconds for one iteration.")
             all_I += removed_indices
+        all_D = [float(num) for num in all_D] # convert numpy float array to python float list
         return all_D, all_I
     
     def k_nearest_meta(self, flickr_accessor, feature, k=4):

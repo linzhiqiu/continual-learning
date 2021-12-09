@@ -1,9 +1,7 @@
 import training_utils
 from utils import load_pickle, save_obj_as_pickle
-# from prepare_clip_dataset import QUERY_TITLE_DICT, LABEL_SETS
 import random
 import argparse
-# from analyze_feature_variation import argparser, get_dataset_folder_paths
 from tqdm import tqdm
 import copy
 import time

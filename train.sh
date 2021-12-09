@@ -50,17 +50,29 @@ python train.py --seed 10 --dataset_name dynamic_300 --mode no_test_set --train_
 python train.py --seed 100 --dataset_name dynamic_300 --mode no_test_set --train_mode imgnet_linear_tuned
 python train.py --seed 1000 --dataset_name dynamic_300 --mode no_test_set --train_mode imgnet_linear_tuned
 
-CUDA_VISIBLE_DEVICES=3 python train.py --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
-CUDA_VISIBLE_DEVICES=3 python train.py --seed 1 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
-CUDA_VISIBLE_DEVICES=3 python train.py --seed 10 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
-CUDA_VISIBLE_DEVICES=3 python train.py --seed 100 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
-CUDA_VISIBLE_DEVICES=3 python train.py --seed 1000 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
+python train.py --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
+python train.py --seed 1 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
+python train.py --seed 10 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
+python train.py --seed 100 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
+python train.py --seed 1000 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear
 
-CUDA_VISIBLE_DEVICES=3 python train.py --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
-CUDA_VISIBLE_DEVICES=5 python train.py --seed 1 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
-CUDA_VISIBLE_DEVICES=5 python train.py --seed 10 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
-CUDA_VISIBLE_DEVICES=6 python train.py --seed 100 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
-CUDA_VISIBLE_DEVICES=6 python train.py --seed 1000 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
+CUDA_VISIBLE_DEVICES=1 python train.py --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
+CUDA_VISIBLE_DEVICES=1 python train.py --seed 1 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
+CUDA_VISIBLE_DEVICES=1 python train.py --seed 10 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
+CUDA_VISIBLE_DEVICES=1 python train.py --seed 100 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
+CUDA_VISIBLE_DEVICES=1 python train.py --seed 1000 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned
+
+CUDA_VISIBLE_DEVICES=2 python train.py --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_batch_8
+CUDA_VISIBLE_DEVICES=2 python train.py --seed 1 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_batch_8
+CUDA_VISIBLE_DEVICES=2 python train.py --seed 10 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_batch_8
+CUDA_VISIBLE_DEVICES=2 python train.py --seed 100 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_batch_8
+CUDA_VISIBLE_DEVICES=2 python train.py --seed 1000 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_batch_8
+
+CUDA_VISIBLE_DEVICES=3 python train.py --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_batch_8
+CUDA_VISIBLE_DEVICES=3 python train.py --seed 1 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_batch_8
+CUDA_VISIBLE_DEVICES=3 python train.py --seed 10 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_batch_8
+CUDA_VISIBLE_DEVICES=3 python train.py --seed 100 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_batch_8
+CUDA_VISIBLE_DEVICES=3 python train.py --seed 1000 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_batch_8
 
 CUDA_VISIBLE_DEVICES=5 python train.py --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_2
 CUDA_VISIBLE_DEVICES=5 python train.py --seed 1 --dataset_name dynamic_300 --mode no_test_set --train_mode moco_v2_yfcc_feb18_bucket_0_gpu_8_linear_tuned_2

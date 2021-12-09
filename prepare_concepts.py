@@ -5,8 +5,7 @@ sys.path.append("./CLIP")
 import os
 import clip
 import torch
-import faiss_utils
-from faiss_utils import KNearestFaissFeatureChunks
+# import faiss_utils
 import numpy as np
 import time
 from datetime import datetime
@@ -75,7 +74,7 @@ def retrieve_examples(prompts, # a dictionary of key (label) and value (prompt)
             prompt = prompts[label] 
             # D is cosine scores
             D, indices, text_feature = retrieval_func(prompt, end_idx=nn_size)
-            selected_clip_features = faiss_utils.aggregate_for_numpy(clip_features_normalized_paths, indices)
+            # selected_clip_features = faiss_utils.aggregate_for_numpy(clip_features_normalized_paths, indices)
             selected_metadata = [bucket_dict_b_idx['all_metadata'][i] for i in indices]
             for d_idx, unique_idx in enumerate(indices):
                 if unique_idx in indices_dict:
@@ -99,7 +98,7 @@ def retrieve_examples(prompts, # a dictionary of key (label) and value (prompt)
             metadata = indices_dict[unique_idx]['metadata']
             max_idx, max_D = max(enumerate(indices_dict[unique_idx]['D']), key=lambda x: x[1])
             max_label = indices_dict[unique_idx]['label'][max_idx]
-            clip_feature = indices_dict[unique_idx]['clip_feature']
+            # clip_feature = indices_dict[unique_idx]['clip_feature']
             if max_label not in dataset_dict_b_idx:
                 import pdb; pdb.set_trace()
             else:
@@ -121,7 +120,7 @@ def retrieve_examples(prompts, # a dictionary of key (label) and value (prompt)
         for label in prompts:
             prompt = prompts[label]
             D, indices, text_feature = retrieval_func(prompt, end_idx=class_size)
-            selected_clip_features = faiss_utils.aggregate_for_numpy(clip_features_normalized_paths, indices)
+            # selected_clip_features = faiss_utils.aggregate_for_numpy(clip_features_normalized_paths, indices)
             selected_metadata = [bucket_dict_b_idx['all_metadata'][i] for i in indices]
             for d_idx, unique_idx in enumerate(indices):
                 if unique_idx in indices_dict:
@@ -223,7 +222,6 @@ def compose_pos_neg_dataset_dict(positive_dataset_dict, negative_dataset_dict, n
 
 if __name__ == '__main__':
     args = argparser.parse_args()
-
     start = time.time()
     cg = load_json(args.concept_group_dict)
     if cg == None:
@@ -231,15 +229,16 @@ if __name__ == '__main__':
     
     # sub_folder_paths = [os.path.join(save_path, f'{b_idx}') for b_idx in cg['NUM_OF_BUCKETS']] # Each bucket has a subfolder
     
+    bucket_dict = load_json(cg['BUCKET_DICT_PATH'])
+    bucket_indices = sorted(list(bucket_dict.keys()), key=lambda idx: int(idx))
+    folder_paths = [bucket_dict[bucket_idx]['folder_path'] for bucket_idx in bucket_indices]
+    save_path = get_save_path(cg) # The main save folder
+    
     dataset_dict_save_path = get_dataset_dict_path(cg)
     if os.path.exists(dataset_dict_save_path):
         print(f"{dataset_dict_save_path} already exists.")
         dataset_dict = load_json(dataset_dict_save_path)
     else:
-        bucket_dict = load_json(cg['BUCKET_DICT_PATH'])
-        bucket_indices = sorted(list(bucket_dict.keys()), key=lambda idx: int(idx))
-        save_path = get_save_path(cg) # The main save folder
-        
         dataset_dict = {}
         print(f"Collecting images for {cg['NAME']}.. ")
         labels = cg['GROUP']
@@ -252,14 +251,12 @@ if __name__ == '__main__':
         prepare_dataset_folder(cg, bucket_indices) # prepare dataset folder if not exists
 
         dataset_dict = {}
-        model, preprocess = clip.load(cg['CLIP_MODEL'], device=device)
         k_nearest_func = prepare_dataset.get_knearest_models_func(
                              bucket_dict,
-                             model,
-                             preprocess
+                             cg['CLIP_MODEL'],
+                             device=device
                          )
 
-        folder_paths = [bucket_dict[bucket_idx]['folder_path'] for bucket_idx in bucket_indices]
         for b_idx, folder_path in zip(bucket_indices, folder_paths):
             clip_features_normalized_paths = prepare_dataset.get_clip_features_normalized_paths(
                                                 folder_path,
@@ -313,8 +310,8 @@ if __name__ == '__main__':
         
         save_as_json(dataset_dict_save_path, dataset_dict)
         print(f"Save at {dataset_dict_save_path}")
-
-    for b_idx, folder_path in enumerate(folder_paths):
+    
+    for b_idx, folder_path in zip(bucket_indices, folder_paths):
         save_folder_path = os.path.join(save_path, f'{b_idx}')
         
         for label in dataset_dict[b_idx]:

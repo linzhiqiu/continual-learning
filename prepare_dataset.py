@@ -62,7 +62,7 @@ def get_knearest_models_func(bucket_dict, clip_model_name, device='cpu'):
     model, preprocess = clip.load(clip_model_name, device=device)
     def knearest_func(bucket_idx):
         clip_features_normalized_paths = get_clip_features_normalized_paths(bucket_dict[bucket_idx]['folder_path'], clip_model_name)
-        k_near_faiss = KNearestFaissFeatureChunks(clip_features_normalized_paths, model, preprocess)
+        k_near_faiss = KNearestFaissFeatureChunks(clip_features_normalized_paths, model, preprocess, device=device)
         return k_near_faiss
     return knearest_func
 

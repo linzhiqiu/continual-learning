@@ -18,6 +18,8 @@ import copy
 
 from torch.utils.data import Dataset
 from torchvision.datasets.folder import default_loader
+import os
+
 class SimpleDataset(Dataset):
     def __init__(self, samples, transform, class_names=None):
         self.samples = samples
@@ -76,7 +78,9 @@ def make_tensor_loader(items, batch_size, shuffle=False, num_workers=4):
     )
 
 def make_image_loader(items, batch_size, shuffle=False, fixed_crop=False, num_workers=4):
-    items = [(os.path.join(m['IMG_DIR'], m['IMG_PATH']), l) for m, l in items]
+    # items = [(os.path.join(m['IMG_DIR'], m['IMG_PATH']), l) for m, l in items]
+    # import pdb; pdb.set_trace()
+    items = [(m.metadata.IMG_PATH.replace("/compute/autobot-1-1/", "/scratch/"), l) for m, l in items]
     train_transform, test_transform = get_imgnet_transforms()
     if shuffle and not fixed_crop:
         transform = train_transform
