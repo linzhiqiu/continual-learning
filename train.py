@@ -377,7 +377,7 @@ def get_input_size(train_mode):
         raise NotImplementedError()
     return input_size
 
-def make_model(train_mode, input_size=1024, output_size=1000):
+def make_model(train_mode, output_size=1000):
     network_type = TRAIN_MODES_CATEGORY[train_mode].network_type
     input_size = get_input_size(train_mode)
     if network_type == 'mlp' or network_type == 'mlp_tuned':
