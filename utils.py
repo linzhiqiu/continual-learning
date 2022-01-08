@@ -50,10 +50,11 @@ def load_pickle(pickle_location, default_obj=None):
         try:
             return pickle.load(open(pickle_location, 'rb'))
         except ModuleNotFoundError:
-            import sys, yfcc_download
+            import sys, temp
             # Hack to rename a module (from large_scale_yfcc_download to yfcc_download)
-            sys.modules['large_scale_yfcc_download_parallel'] = yfcc_download
-            sys.modules['large_scale_yfcc_download'] = yfcc_download
+            sys.modules['large_scale_yfcc_download_parallel'] = temp
+            sys.modules['large_scale_yfcc_download'] = temp
+            # sys.modules['temp'] = yfcc_download
             a = pickle.load(open(pickle_location, 'rb'))
             save_obj_as_pickle(pickle_location, a)
             return pickle.load(open(pickle_location, 'rb'))

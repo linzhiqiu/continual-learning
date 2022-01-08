@@ -24,7 +24,6 @@ from utils import save_as_json, load_json
 import threading
 import sys
 import time
-from temp import MetadataObject, Metadata, FlickrFolder
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--img_dir", 
@@ -120,7 +119,7 @@ def _parse_autotags(line):
     return entries[0], tag_scores
 
 def _parse_metadata(data, autotag, line_num, hash_dict, save_folder, exif_line=None):
-    """Parse the metadata and return MetadataObject
+    """Parse the metadata text and return a dictionary of metadata entries
     """
     metadata = {}
 

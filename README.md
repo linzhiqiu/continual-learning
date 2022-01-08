@@ -189,17 +189,67 @@ After you modify this [json file](clear_10_config.json) (or create your own), yo
 ```
   python prepare_concepts.py --concept_group_dict ./clear_10_config.json
 ```
-The retrieved images will then be saved under **SAVE_PATH/NAME/**
+The retrieved images will then be saved under **SAVE_PATH/NAME/labeled_images**. Plus, caffe-style image filelist will be generated per bucket under **SAVE_PATH/NAME/filelists/**, and you may access the file names in bucket order via **SAVE_PATH/NAME/filelists.json**. When determining the class index, class names will be sorted via alphabetical order, stored in **SAVE_PATH/NAME/class_names.txt**. Metadata for labeled images will be saved under **SAVE_PATH/NAME/labeled_metadata/**, you may access the file names in bucket order via **SAVE_PATH/NAME/labeled_metadata.json**. 
 
-## CSV files preparation
-You can export the metadata to CSV files via prepare_csv.py.
+Finally, if you want to save the raw images/metadata for all images, you can set **--save_all_images** or **--save_all_metadata** to be **True**. Then raw images/metadata for all images per bucket are saved under **SAVE_PATH/NAME/all_images/** and **SAVE_PATH/NAME/all_metadata/**, and metadata file names per bucket is saved in **SAVE_PATH/NAME/all_metadata.json**. The directory tree looks like:
+
+```
+SAVE_PATH/NAME/
+|   concept_group_dict.json (a copy for reference)
+|   class_names.txt (line number for each class is the class index)
+|   clip_result.json (clip retrieved scores and metadata for all buckets)
+|   filelists.json (mapping bucket index to filelist path)
+|   labeled_metadata.json (mapping bucket index to labeled metadata path)
+|   all_metadata.json (mapping bucket index to all metadata path, optional)
+└───filelists (for caffe-style image list)
+│   │   0.txt
+|   |   1.txt
+|   |   ...
+└───labeled_images (for clip-retrieved images)
+|   └───0
+|   |   └───computer
+|   |   |   |   235821044.jpg
+|   |   |   |   ...
+|   |   └───camera
+|   |   |   |   269400202.jpg
+|   |   |   |   ...
+|   |   └───...
+|   └───1
+|   └───...
+└───labeled_metadata (metadata for labeled images)
+|   └───0
+|   |   |   computer.json (dict: key is flickr ID, value is metadata dict)
+|   |   |   camera.json
+|   |   |   ...
+|   └───1
+|   |   |   ...
+|   └───...
+└───all_images (all images in a bucket, optional)
+|   └───0
+|   |   |   648321013.jpg
+|   |   |   ...
+|   └───1
+|   └───...
+└───all_metadata (metadata for all images, optional)
+│   │   0.json
+|   |   1.json
+|   |   ...
+```
+
+<!-- ## CSV files preparation
+You can export the metadata to CSV files via prepare_csv.py. -->
 
 ## MoCo V2 pre-training on single bucket
 You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After you download the images and segment them into buckets, you can specify a bucket from the stream to pre-train a MoCo V2 model. For more details about training MoCo, please refer to their [official repository](https://github.com/facebookresearch/moco). For example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the --data flag to your local file location that saves the bucket of image metadata; and modify the --model_folder to where you want the MoCo V2 model to be saved):
 ```
   python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.json --model_folder /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 ```
-The above script requires 8 (RTX 2080) GPUs. You can shrink the batch size if you have fewer available GPUs.
+The above script requires 8 (RTX 2080) GPUs. You can shrink the batch size if you have fewer available GPUs. It will save the checkpoint at the end of every epoch of training: If you want to load the checkpoint at the end of epoch 200th, the path would be **model_folder**/checkpoint_0199.pth.tar.
+
+## Extract features for training
+```
+  python prepare_features.py --model /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/checkpoint_0199.pth.tar --arch resnet50 --batch-size 256 ?? how to deal with a cleaned folder?
+```
 
 # Classifier Training.
 TODO. Maybe work with avalanche.

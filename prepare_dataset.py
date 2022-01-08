@@ -313,7 +313,6 @@ if __name__ == '__main__':
     # Extract and save the CLIP features
     print(f"Using CLIP pre-trained model {args.model_name}")
     model, preprocess = clip.load(args.model_name, device=device)
-    # model.visual = torch.nn.DataParallel(model.visual)
     for i, folder_path in enumerate(folder_paths):
         main_save_location = get_main_save_location(folder_path, args.model_name)
         print(main_save_location)

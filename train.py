@@ -717,10 +717,15 @@ if __name__ == '__main__':
         print(f"Query dict does not exist for {dataset_name}")
         exit(0)
     query_dict = load_pickle(query_dict_path)
+
     
     all_query = sorted(list(query_dict[list(query_dict.keys())[0]].keys()))
     print(f"We have {len(all_query)} classes.")
     print(all_query)
+
+    # Make a caffe-style image list
+    import pdb; pdb.set_trace()
+    
 
     ############### Create Datasets
     dataset_dict_path = os.path.join(exp_result_save_path,

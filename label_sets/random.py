@@ -1,1 +1,0 @@
-labels = ['apple', 'cosplay', 'firewall', 'cloud', 'classroom', 'poster', 'screen shot', 'map', 'tattoo', 'library',]
