@@ -54,6 +54,7 @@ def load_pickle(pickle_location, default_obj=None):
             # Hack to rename a module (from large_scale_yfcc_download to yfcc_download)
             sys.modules['large_scale_yfcc_download_parallel'] = temp
             sys.modules['large_scale_yfcc_download'] = temp
+            sys.modules['flickr_parsing'] = temp
             # sys.modules['temp'] = yfcc_download
             a = pickle.load(open(pickle_location, 'rb'))
             save_obj_as_pickle(pickle_location, a)

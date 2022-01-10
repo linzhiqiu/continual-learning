@@ -1,14 +1,9 @@
 # For collecting a group of visual concepts. 
-# You should run CLIP-ConceptGroups.ipynb first to generate the dataset information
 import sys
 sys.path.append("./CLIP")
 import os
-import clip
 import torch
-# import faiss_utils
-import numpy as np
 import time
-from datetime import datetime
 from tqdm import tqdm
 import shutil
 
@@ -22,7 +17,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--concept_group_dict",
                        default="./clear_10_config.json", type=str,
-                       help="You should run CLIP-ConceptGroups.ipynb to generate a concept_group_dict (in json format)")
+                       help="You can specify the various configs for data collection (in json format)")
 argparser.add_argument("--save_all_images",
                        default=False, type=bool,
                        help="Image files for all images will be saved under 'SAVE_PATH/NAME/all_images/'")
@@ -203,11 +198,13 @@ if __name__ == '__main__':
     filelists_json_path = save_path / 'filelists.json'
     filelists_path = save_path / 'filelists'
     labeled_images_path = save_path / 'labeled_images'
+    labeled_metadata_json_path = save_path / 'labeled_metadata.json'
     labeled_metadata_path = save_path / 'labeled_metadata'
     
     # optional
     all_images_path = save_path / 'all_images'
     all_metadata_path = save_path / 'all_metadata'
+    all_metadata_json_path = save_path / 'all_metadata.json'
     
     clip_result = {} # key is bucket index (str), value is information for retrieved example
 
@@ -231,7 +228,10 @@ if __name__ == '__main__':
         save_as_json(concept_group_dict_path, cg)
 
     # Write class names in sorted order to class_names_path
-    sorted_prompts = sorted([prompts[k] for k in prompts])
+    sorted_prompts = [prompts[k] for k in prompts]
+    if cg['BACKGROUND']:
+        sorted_prompts += ['BACKGROUND']
+    sorted_prompts = sorted(sorted_prompts)
     class_names_str = "\n".join(sorted_prompts)
     if class_names_path.exists():
         old_class_names_str = class_names_path.read_text()
@@ -260,7 +260,7 @@ if __name__ == '__main__':
                                              )
             save_folder_path = os.path.join(save_path, b_idx)
             clip_result[b_idx] = {}
-            print(f"Starting querying for bucket {b_idx}. Result will be saved at {clip_result_i_path}")
+            print(f"Starting querying for bucket {b_idx}.")
             
             k_near_faiss = k_nearest_func(b_idx)
 
@@ -304,60 +304,75 @@ if __name__ == '__main__':
         labeled_metadata_path.mkdir(exist_ok=True)
         labeled_images_path.mkdir(exist_ok=True)
         filelists_path.mkdir(exist_ok=True)
-        for b_idx in bucket_indices:
-            labeled_metadata_path_i = labeled_metadata_path / b_idx
-            labeled_metadata_path_i.mkdir(exist_ok=True)
-            labeled_images_path_i = labeled_images_path / b_idx
-            labeled_images_path_i.mkdir(exist_ok=True)
-            
-            filelists_path_i = filelists_path / (b_idx + ".txt")
-            filelist_strs_list_i = []
-            for label in clip_result[b_idx]:
-                label_index = sorted_prompts.index(label)
-                labeled_images_path_i_label = labeled_images_path_i / label
-                labeled_images_path_i_label.mkdir(exist_ok=True)
+    
+    filelists_dict = {}
+    labeled_metadata_dict = {}
+    
+    for b_idx in bucket_indices:
+        labeled_metadata_path_i = labeled_metadata_path / b_idx
+        labeled_metadata_path_i.mkdir(exist_ok=True)
+        labeled_metadata_dict[b_idx] = str(labeled_metadata_path_i)
 
-                labeled_metadata_path_i_label = labeled_metadata_path_i / label + ".json"
-                labeled_metadata_i_label = {} # key is flickr ID (str), value is metadata dict for this image
-                for meta in clip_result[b_idx][label]['metadata']:
-                    original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
-                    ID = meta['ID']
-                    EXT = meta['EXT']
-                    img_name = f"{ID}.{EXT}"
-                    transfer_path = os.path.join(labeled_images_path_i_label, img_name)
-                    shutil.copy(original_path, transfer_path)
-                    meta['IMG_DIR'] = save_path
-                    meta['IMG_PATH'] = Path("labeled_images") / b_idx / label / img_name
-                    labeled_metadata_i_label[ID] = meta
-                    filelist_strs_list_i.append(f"{meta['IMG_PATH']} {label_index}")
-
-                save_as_json(labeled_metadata_path_i_label, labeled_metadata_i_label)
-            filelist_str = "\n".join(filelist_strs_list_i)
-            with open(filelists_path_i, "w+") as f:
-                f.write(filelist_str)
-            
-                    
-    # for b_idx, folder_path in zip(bucket_indices, folder_paths):
-    #     save_folder_path = os.path.join(save_path, f'{b_idx}')
+        labeled_images_path_i = labeled_images_path / b_idx
+        labeled_images_path_i.mkdir(exist_ok=True)
         
-    #     for label in clip_result[b_idx]:
-    #         save_folder_path_label = os.path.join(save_folder_path, label)
-    #         if not os.path.exists(save_folder_path_label):
-    #             os.mkdirs(save_folder_path_label)
-    #         for meta in clip_result[b_idx][label]['metadata']:
-    #             original_path = os.path.join(meta['IMG_DIR'], meta['IMG_PATH'])
-    #             ID = meta['ID']
-    #             EXT = meta['EXT']
-    #             transfer_path = os.path.join(save_folder_path_label, f"{ID}.{EXT}")
-    #             shutil.copy(original_path, transfer_path)
-    #     print(f"Finish transferring images to {save_folder_path}")
+        filelists_path_i = filelists_path / (b_idx + ".txt")
+        filelists_dict[b_idx] = str(filelists_path_i)
+        filelist_strs_list_i = []
+        for label in clip_result[b_idx]:
+            label_index = sorted_prompts.index(label)
+            labeled_images_path_i_label = labeled_images_path_i / label
+            labeled_images_path_i_label.mkdir(exist_ok=True)
+
+            labeled_metadata_path_i_label = labeled_metadata_path_i / (label + ".json")
+            labeled_metadata_i_label = {} # key is flickr ID (str), value is metadata dict for this image
+            for meta in clip_result[b_idx][label]['metadata']:
+                original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
+                ID = meta['ID']
+                EXT = meta['EXT']
+                img_name = f"{ID}.{EXT}"
+                transfer_path = labeled_images_path_i_label / img_name
+                shutil.copy(original_path, transfer_path)
+                meta['IMG_DIR'] = str(save_path)
+                meta['IMG_PATH'] = str(Path("labeled_images") / b_idx / label / img_name)
+                labeled_metadata_i_label[ID] = meta
+                filelist_strs_list_i.append(f"{meta['IMG_PATH']} {label_index}")
+
+            save_as_json(labeled_metadata_path_i_label, labeled_metadata_i_label)
+        filelist_str = "\n".join(filelist_strs_list_i)
+        with open(filelists_path_i, "w+") as f:
+            f.write(filelist_str)
+            
+    save_as_json(filelists_json_path, filelists_dict)
+    save_as_json(labeled_metadata_json_path, labeled_metadata_dict)
+
+    if args.save_all_images and not args.save_all_metadata:
+        raise ValueError("Save all images but without saving metadata?")
     
     if args.save_all_metadata:
-        import pdb; pdb.set_trace() #TODO
+        all_metadata_dict = {}
         if not all_metadata_path.exists():
             all_metadata_path.mkdir()
-    
-    if args.save_all_images:
-        import pdb; pdb.set_trace() #TODO
-        if not all_images_path.exists():
-            all_images_path.mkdir()
+        for b_idx in bucket_indices:
+            all_metadata_path_i = all_metadata_path / (b_idx + ".json")
+            all_metadata_dict[b_idx] = str(all_metadata_path_i)
+            all_metadata_i = {} # key is flickr ID, value is metadata dict
+
+            if args.save_all_images:
+                all_images_path_i = all_images_path / b_idx
+                all_images_path_i.mkdir(exist_ok=True)
+        
+            for meta in bucket_dict[b_idx]['all_metadata']:
+                original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
+                transfer_path = all_images_path_i / img_name
+                ID = meta['ID']
+                EXT = meta['EXT']
+                img_name = f"{ID}.{EXT}"
+                meta['IMG_DIR'] = str(save_path)
+                meta['IMG_PATH'] = str(Path("all_images") / b_idx / img_name)
+                all_metadata_i[ID] = meta
+                if args.save_all_images:
+                    shutil.copy(original_path, transfer_path)
+
+            save_as_json(all_metadata_path_i, all_metadata_i)
+        save_as_json(all_metadata_json_path, all_metadata_dict)

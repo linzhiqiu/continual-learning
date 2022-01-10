@@ -271,10 +271,8 @@ def save_bucket_dict(flickr_folder_location, all_metadata, folder_paths, num_of_
         line_num_list = [int(meta['LINE_NUM']) for meta in meta_list]
         min_line, max_line = min(line_num_list), max(line_num_list)
         print(f"For bucket {i}: Line number range from {min_line} to {max_line}")
-    # if not os.path.exists(bucket_dict_path):    
+    
     save_as_json(bucket_dict_path, bucket_dict)
-    # else:
-    #     print(f"{bucket_dict_path} already exists")
     return bucket_dict_path, bucket_dict
 
 if __name__ == '__main__':
