@@ -81,7 +81,7 @@ An example script is:
 
 The above script will download the Flickr images with (1) byte size larger than 10 (**min_size**), (2) shorter edge larger than 120 pixels (**min_edge**), (3) maximum aspect ratio larger than 2 (**max_aspect_ratio**). It will split images to multiple subfolders indexed by numbers under **img_dir**, each containing at most 50000 (**chunk_size**) images. You can stop the script anytime once you have downloaded enough images.
 
-If you run this script, a pickle file will be saved and updated at **img_dir/all_folders.json**. All images you downloaded as well as their respective metadata can be accessed by this object. **Do not delete this file at anytime since it keeps track of the download status.**
+If you run this script, a json file will be saved and updated at **img_dir/all_folders.json**. All images you downloaded as well as their respective metadata can be accessed through this dictionary. **Do not delete this file at anytime since it keeps track of the current download status.**
 
 Caveat: If your RAM is limited, the script might be killed occasionally. In that case, you just need to rerun the same script and it will resume from the previous checkpoint.
 
@@ -112,7 +112,7 @@ The above script will (1) sort the downloaded YFCC100M images by upload timestam
 /scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_by_year.json
 ```
 
-You can also split to equal-sized buckets via:
+You can also split image stream to equal-sized buckets (like what we did in paper) via:
 ```
   python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --split_by_year False --num_of_buckets 11 --model_name RN101
 ```
@@ -133,10 +133,10 @@ This will produce a json file at **img_dir**/bucket_**name_of_json_file**.json, 
 
 # Visio-linguistic dataset curation with CLIP
 ## Prompt Engineering with CLIP
-Once you download the dataset and extract the CLIP features, you can use the interactive jupyter notebook ([CLIP-PromptEngineering.ipynb](CLIP-PromptEngineering.ipynb)) to perform image retrival and try out different prompts for your visual concepts of interest! Please follow the instruction in the notebook and change to your local path to bucket_dict json file generated from last step. 
+Once you download the dataset and extract the CLIP features following the instruction above, you can use the interactive jupyter notebook ([CLIP-PromptEngineering.ipynb](CLIP-PromptEngineering.ipynb)) to perform image retrival and try out different prompts for your visual concepts of interest! Please follow the instruction in the notebook and change to your local path to the json file generated from last step. 
 
 ## Image Retrieval with a group of visual concepts
-Once you find a list of engineered prompts for different visual concepts, you may retrieve images for all the prompts at once with [prepare_concepts.py](prepare_concepts.py). Before doing so, you should input the prompts to a json file as well as specifying all parameters for collecting the dataset. One such example is [clear_10_config.json](clear_10_config.json), and here is an explanation for all the configurations:
+After you find a list of engineered prompts for different visual concepts, you may retrieve images for all the prompts at once with [prepare_concepts.py](prepare_concepts.py). Before doing so, you should input the prompts to a json file as well as specifying all parameters for collecting the dataset. One such example is [clear_10_config.json](clear_10_config.json), and here is an explanation for all the configurations:
 ```
 {
     # Name your own dataset
@@ -189,9 +189,11 @@ After you modify this [json file](clear_10_config.json) (or create your own), yo
 ```
   python prepare_concepts.py --concept_group_dict ./clear_10_config.json
 ```
-The retrieved images will then be saved under **SAVE_PATH/NAME/labeled_images**. Plus, caffe-style image filelist will be generated per bucket under **SAVE_PATH/NAME/filelists/**, and you may access the file names in bucket order via **SAVE_PATH/NAME/filelists.json**. When determining the class index, class names will be sorted via alphabetical order, stored in **SAVE_PATH/NAME/class_names.txt**. Metadata for labeled images will be saved under **SAVE_PATH/NAME/labeled_metadata/**, you may access the file names in bucket order via **SAVE_PATH/NAME/labeled_metadata.json**. 
+The retrieved images will then be saved under **SAVE_PATH/NAME/labeled_images**. Plus, caffe-style image filelist will be generated per bucket under **SAVE_PATH/NAME/filelists/**, and you may access the file names via bucket index with **SAVE_PATH/NAME/filelists.json**. When determining the class index, class names will be sorted via alphabetical order, stored per line in **SAVE_PATH/NAME/class_names.txt**. Metadata for labeled images will be saved under **SAVE_PATH/NAME/labeled_metadata/**, you may access the file names via bucket index and label name via **SAVE_PATH/NAME/labeled_metadata.json**. 
 
-Finally, if you want to save the raw images/metadata for all images, you can set **--save_all_images** or **--save_all_metadata** to be **True**. Then raw images/metadata for all images per bucket are saved under **SAVE_PATH/NAME/all_images/** and **SAVE_PATH/NAME/all_metadata/**, and metadata file names per bucket is saved in **SAVE_PATH/NAME/all_metadata.json**. The directory tree looks like:
+Finally, if you want to save the raw images/metadata for all images, you can set **--save_all_images** or **--save_all_metadata** to be **True**. Then raw images/metadata for all images per bucket are saved under **SAVE_PATH/NAME/all_images/** and **SAVE_PATH/NAME/all_metadata/**, and metadata file names per bucket is saved in **SAVE_PATH/NAME/all_metadata.json**. 
+
+The resulting directory tree looks like:
 
 ```
 SAVE_PATH/NAME/
@@ -240,20 +242,20 @@ SAVE_PATH/NAME/
 You can export the metadata to CSV files via prepare_csv.py. -->
 
 ## MoCo V2 pre-training on single bucket
-You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. After you download the images and segment them into buckets, you can specify a bucket from the stream to pre-train a MoCo V2 model. For more details about training MoCo, please refer to their [official repository](https://github.com/facebookresearch/moco). For example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the --data flag to your local file location that saves the bucket of image metadata; and modify the --model_folder to where you want the MoCo V2 model to be saved):
+You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. Specifically, after you download the images and segment them into buckets, you can specify a bucket from the stream to pre-train a MoCo V2 model. For more details about training MoCo and tuning hyperparameters, please refer to their [official repository](https://github.com/facebookresearch/moco). As an example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the **--data** flag to your local file location that saves the bucket of image metadata; and modify the **--model_folder** to where you want the MoCo V2 model to be saved):
 ```
   python moco/main_yfcc.py --data /scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_11/0/bucket_0.json --model_folder /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/ --arch resnet50 -j 32 --lr 0.03 --batch-size 256 --dist-url 'tcp://localhost:10023' --multiprocessing-distributed --mlp --moco-t 0.2 --aug-plus --cos
 ```
-The above script requires 8 (RTX 2080) GPUs. You can shrink the batch size if you have fewer available GPUs. It will save the checkpoint at the end of every epoch of training: If you want to load the checkpoint at the end of epoch 200th, the path would be **model_folder**/checkpoint_0199.pth.tar.
+The above script requires 8 (RTX 2080) GPUs. You can shrink the batch size if you have fewer available GPUs. Checkpoint will be saved at the end of every epoch of training; e.g., if you want to load the checkpoint at the end of epoch 200th, the path would be **model_folder**/checkpoint_0199.pth.tar.
 
-If you want to use the model checkpoint, you may run the below script to extract the 'state_dict' in order to load into a pytorch initialized model.
+If you want to use the model checkpoint for feature extract (see next section), you may run the below script to extract the 'state_dict' in order to load into a pytorch initialized ResNet model. For example:
 ```
   python adapt_moco_model.py --model_path /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/checkpoint_0199.pth.tar --save_path /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/best_state_dict.pth.tar
 ```
 
 
 ## Extract features for training
-Once you pre-train your MoCo model (or any other unsupervised model and save its state_dict), you may extract features via the below script:
+Once you pre-train your MoCo model (or any other unsupervised model and save its state_dict), you may extract features via [prepare_features.py](prepare_features.py):
 ```
   python prepare_features.py --folder_path /data3/zhiqiul/clear_datasets/CLEAR10-TEST --name moco_b0 --state_dict_path /data3/zhiqiul/yfcc_moco_models/sep_21_bucket_0_gpu_8/best_state_dict.pth.tar --arch resnet50
 ```
@@ -295,11 +297,6 @@ SAVE_PATH/NAME/
 |   |   |   |   ...
 |   |   └───...
 ```
-
-
-
-# Classifier Training.
-TODO. Maybe work with avalanche.
 
 # Citation
 If this work is useful for your research, please cite our paper:

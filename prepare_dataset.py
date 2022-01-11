@@ -1,6 +1,6 @@
 # Description:
-# (1) Then split the image stream to buckets sorted by upload time
-# (2) Finally generate and save the CLIP features (normalized + unnormalized)
+# (1) Split the image stream to buckets sorted by upload time
+# (2) Then generate and save the CLIP features (normalized + unnormalized)
 
 # Version 1 - Split by year, e.g., 2004, 2005, 2006,..., 2014
 #   python prepare_dataset.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2 --split_by_year True --model_name RN50 

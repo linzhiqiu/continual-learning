@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 import argparse
 import prepare_dataset
-from utils import divide, normalize, load_json, save_as_json
+from utils import load_json, save_as_json
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
