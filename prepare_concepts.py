@@ -311,13 +311,13 @@ if __name__ == '__main__':
     for b_idx in bucket_indices:
         labeled_metadata_path_i = labeled_metadata_path / b_idx
         labeled_metadata_path_i.mkdir(exist_ok=True)
-        labeled_metadata_dict[b_idx] = str(labeled_metadata_path_i)
+        labeled_metadata_dict[b_idx] = {} # key is label, value is json path
 
         labeled_images_path_i = labeled_images_path / b_idx
         labeled_images_path_i.mkdir(exist_ok=True)
         
         filelists_path_i = filelists_path / (b_idx + ".txt")
-        filelists_dict[b_idx] = str(filelists_path_i)
+        filelists_dict[b_idx] = str(Path('filelists') / (b_idx + ".txt"))
         filelist_strs_list_i = []
         for label in clip_result[b_idx]:
             label_index = sorted_prompts.index(label)
@@ -325,6 +325,7 @@ if __name__ == '__main__':
             labeled_images_path_i_label.mkdir(exist_ok=True)
 
             labeled_metadata_path_i_label = labeled_metadata_path_i / (label + ".json")
+            labeled_metadata_dict[b_idx][label] = str(Path('labeled_metadata') / b_idx / (label + ".json"))
             labeled_metadata_i_label = {} # key is flickr ID (str), value is metadata dict for this image
             for meta in clip_result[b_idx][label]['metadata']:
                 original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
@@ -345,7 +346,7 @@ if __name__ == '__main__':
             
     save_as_json(filelists_json_path, filelists_dict)
     save_as_json(labeled_metadata_json_path, labeled_metadata_dict)
-
+    
     if args.save_all_images and not args.save_all_metadata:
         raise ValueError("Save all images but without saving metadata?")
     
@@ -355,11 +356,11 @@ if __name__ == '__main__':
             all_metadata_path.mkdir()
         for b_idx in bucket_indices:
             all_metadata_path_i = all_metadata_path / (b_idx + ".json")
-            all_metadata_dict[b_idx] = str(all_metadata_path_i)
+            all_metadata_dict[b_idx] = str(Path('all_metadata') / (b_idx + ".json"))
             all_metadata_i = {} # key is flickr ID, value is metadata dict
 
+            all_images_path_i = all_images_path / b_idx
             if args.save_all_images:
-                all_images_path_i = all_images_path / b_idx
                 all_images_path_i.mkdir(exist_ok=True)
         
             for meta in bucket_dict[b_idx]['all_metadata']:

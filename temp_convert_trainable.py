@@ -759,13 +759,13 @@ if __name__ == '__main__':
         print(f"Working on {b_idx}")
         labeled_metadata_path_i = labeled_metadata_path / b_idx
         labeled_metadata_path_i.mkdir(exist_ok=True)
-        labeled_metadata_dict[b_idx] = str(labeled_metadata_path_i)
+        labeled_metadata_dict[b_idx] = {} # key is label name, value is json path
 
         labeled_images_path_i = labeled_images_path / b_idx
         labeled_images_path_i.mkdir(exist_ok=True)
         
         filelists_path_i = filelists_path / (b_idx + ".txt")
-        filelists_dict[b_idx] = str(filelists_path_i)
+        filelists_dict[b_idx] = str(Path('filelists') / (b_idx + ".txt"))
         filelist_strs_list_i = []
         
         for label in query_dict[int(b_idx)]:
@@ -776,6 +776,7 @@ if __name__ == '__main__':
             labeled_images_path_i_label.mkdir(exist_ok=True)
 
             labeled_metadata_path_i_label = labeled_metadata_path_i / (label + ".json")
+            labeled_metadata_dict[b_idx][label] = str(Path("labeled_metadata") / b_idx / (label + ".json"))
             labeled_metadata_i_label = {} # key is flickr ID (str), value is metadata dict for this image
             label_name = label if label != 'BACKGROUND' else 'NEGATIVE'
             for meta in query_dict[int(b_idx)][label_name]['metadata']:
@@ -804,7 +805,7 @@ if __name__ == '__main__':
         all_metadata_path.mkdir()
     for b_idx in bucket_indices:
         all_metadata_path_i = all_metadata_path / (b_idx + ".json")
-        all_metadata_dict[b_idx] = str(all_metadata_path_i)
+        all_metadata_dict[b_idx] = str(Path('all_metadata') / (b_idx + ".json"))
         all_metadata_i = {} # key is flickr ID, value is metadata dict
 
         for meta in bucket_dict[b_idx]['all_metadata']:

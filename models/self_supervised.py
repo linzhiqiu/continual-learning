@@ -1,8 +1,8 @@
 import torch
 
 MOCO_PATH = "/data3/zhiqiul/self_supervised_models/moco_r50_v2-e3b0c442.pth"
-INSTANCE_PATH = "/data3/zhiqiul/self_supervised_models/lemniscate_resnet50_update.pth"
 BYOL_PATH = "/data3/zhiqiul/self_supervised_models/byol_r50-e3b0c442.pth"
+INSTANCE_PATH = "/data3/zhiqiul/self_supervised_models/lemniscate_resnet50_update.pth"
 ROT_PATH = "/data3/zhiqiul/self_supervised_models/rotation_r50-cfab8ebb.pth"
 MOCO_YFCC_GPU_8_PATH = "/data3/zhiqiul/self_supervised_models/yfcc_moco_models/feb_18_bucket_11_idx_0_gpu_8/checkpoint_0199.pth.tar"
 MOCO_YFCC_GPU_4_RESNET18_PATH = "/data3/zhiqiul/self_supervised_models/yfcc_moco_models/sep_16_bucket_11_idx_0_gpu_4_resnet18/checkpoint_0199.pth.tar"
@@ -42,3 +42,21 @@ def moco_v2_yfcc_feb18_bucket_0_gpu_8(model, path=MOCO_YFCC_GPU_8_PATH):
 
 def moco_v2_yfcc_sep16_bucket_0_gpu_4_resnet18(model, path=MOCO_YFCC_GPU_4_RESNET18_PATH):
     return load_moco_ckpt(model, path=path)
+
+if __name__ == '__main__':
+    from pathlib import Path
+    import torchvision.models as models
+    save_path = Path("/data3/zhiqiul/self_supervised_models/state_dict/")
+    save_path.mkdir(exist_ok=True)
+    for model_name in ['imagenet', 'moco', 'byol']:
+        if model_name == 'imagenet':
+            state_dict = models.__dict__['resnet50'](pretrained=True).state_dict()
+            del state_dict['fc.weight']
+            del state_dict['fc.bias']
+        elif model_name == 'moco':
+            state_dict = torch.load(MOCO_PATH)['state_dict']
+        elif model_name == 'byol':
+            state_dict = torch.load(BYOL_PATH)['state_dict']
+        model_path = save_path / (model_name + ".pth.tar")
+        torch.save(state_dict, model_path)
+        print(f"Saved to {model_path}")

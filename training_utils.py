@@ -90,13 +90,6 @@ def make_image_loader(items, batch_size, shuffle=False, fixed_crop=False, num_wo
         items, transform, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers,
     )
 
-def get_unnormalize_func():
-    inv_normalize = transforms.Normalize(
-        mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
-        std=[1/0.229, 1/0.224, 1/0.225]
-    )
-    return inv_normalize
-
 def get_imgnet_transforms():
     # Note that this is not exactly imagenet transform/moco transform for val set
     # Because we resize to 224 instead of 256
