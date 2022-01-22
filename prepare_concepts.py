@@ -311,7 +311,7 @@ if __name__ == '__main__':
     for b_idx in bucket_indices:
         labeled_metadata_path_i = labeled_metadata_path / b_idx
         labeled_metadata_path_i.mkdir(exist_ok=True)
-        labeled_metadata_dict[b_idx] = {} # key is label, value is json path
+        labeled_metadata_dict[b_idx] = {} # key is label, value is dict (key is label name, value is json path)
 
         labeled_images_path_i = labeled_images_path / b_idx
         labeled_images_path_i.mkdir(exist_ok=True)

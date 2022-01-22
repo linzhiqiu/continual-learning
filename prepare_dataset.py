@@ -41,8 +41,6 @@ from utils import divide, load_json, save_as_json, normalize
 MAX_SIZE = 500000 # The maximum number of features to store in a single file. You may adjust it according to your CPU memory.
 BATCH_SIZE = 128 # The batch size used for extracting features. Adjust it according to your GPU memory
 device = "cuda"
-# MIN_LINE_NUM = 11000000 # Minimal Line Num
-MIN_LINE_NUM = None
 
 # Continue the argparser in yfcc_download
 argparser.add_argument('--split_by_time', default=None, type=str,
@@ -247,10 +245,6 @@ def save_bucket_dict(flickr_folder_location, all_metadata, folder_paths, num_of_
     bucket_dict = {}
     for i, chunk in enumerate(chunks_of_indices):
         bucket_dict_i_path = os.path.join(folder_paths[i], f'bucket_{i}.json')
-        if MIN_LINE_NUM:
-            print(f"Before filtering by MIN_LINE_NUM: chunk size = {len(chunk)}")
-            chunk = [i for i in chunk if int(all_metadata[i]['LINE_NUM']) > MIN_LINE_NUM]
-            print(f"After filtering by MIN_LINE_NUM: chunk size = {len(chunk)}")
         meta_list = [all_metadata[i] for i in chunk]
         date_uploaded_list_i = [date_uploaded_list[i] for i in chunk]
         if os.path.exists(bucket_dict_i_path):
@@ -277,10 +271,6 @@ def save_bucket_dict(flickr_folder_location, all_metadata, folder_paths, num_of_
 
 if __name__ == '__main__':
     args = argparser.parse_args()
-    
-    if MIN_LINE_NUM != None:
-        print(f"Only select images with line number greater than {MIN_LINE_NUM}")
-        import pdb; pdb.set_trace()
     
     start = time.time()
     flickr_folder_location = get_save_folder(

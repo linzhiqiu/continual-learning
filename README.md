@@ -3,14 +3,6 @@
 ## Introduction
 This repository contains code for preparing [*The CLEAR Benchmark*](https://clear-benchmark.github.io) from [YFCC100M](http://www.yfcc100m.org) and [CLIP](https://github.com/openai/CLIP).
 
-<!-- > [**Visual Chirality**](http://bit.ly/visual-chirality),            
-> [Zhiqiu Lin](https://linzhiqiu.github.io), [Jin Sun](http://www.cs.cornell.edu/~jinsun/), 
-[Abe Davis](http://abedavis.com), [Noah Snavely](https://www.cs.cornell.edu/~snavely/)     
-> *IEEE Computer Vision and Pattern Recognition, 2020, Best Paper Nominee*  -->
-
-<!-- For a brief overview of the paper, please check out our oral presentation video!
-<p align="center"><a target=_blank href="https://www.youtube.com/watch?v=gc5IvTozU9M&feature=youtu.be"><img src="http://img.youtube.com/vi/gc5IvTozU9M/0.jpg" width="50%" alt="" /></a></p> -->
-
 ## Repository Overview
 
 This repository contains all the code snippets for CLEAR dataset curation as detailed in our paper for reproducibility. Specifically you will find code for:
@@ -19,18 +11,6 @@ This repository contains all the code snippets for CLEAR dataset curation as det
 - CLIP feature extraction from downloaded images
 - Visio-linguistic dataset curation via CLIP-based image retrieval
 - MoCo V2 model training on downloaded images
-
-<!-- ## Structure -->
-<!-- - `train.py`: includes training and validation scripts.
-- `config.py`: contains arguments for data preparation, model definition, and imaging details.
-- `exp.sh` : contains the experiments script to run.
-- All other helper modules :
-  - `dataset_factory.py`: prepares PyTorch dataloaders of processed images.
-  - `global_setting.py`: contains all supporting demosaicing algorithms and model definitions.
-  - `utils.py`: contains functions to generate random images and compute mosiaced/demosaiced/compressed images.
-  - `tools.py`: A variety of helpers to get PyTorch optimizer/schedular and logging directory names.
-
-The code is developed using python 3.8.5. NVIDIA GPUs are needed to train and test. -->
 
 # YFCC Download and Feature Extraction
 
@@ -85,11 +65,6 @@ If you run this script, a json file will be saved and updated at **img_dir/all_f
 
 Caveat: If your RAM is limited, the script might be killed occasionally. In that case, you just need to rerun the same script and it will resume from the previous checkpoint.
 
-<!-- To download at full speed (which requires more RAM resources), we also provide a multi-threading version of the same python script:
-```
-  python large_scale_yfcc_download_parallel.py --img_dir /scratch/zhiqiu/yfcc100m_all_new_sep_21 --min_size 10 --chunk_size 50000 --min_edge 120 --max_aspect_ratio 2;
-``` -->
-<!-- The above script will download the Flickr images with parallel workers (MAX_WORKERS=128 as default). It will also split images to multiple subfolders, each containing at most 50000 (--chunk_size) images. The rest are the same as the above script. Note that if your RAM is limited, the script might be killed occasionally. In that case, you just need to rerun the script and it will resume from the previous checkpoint. -->
 ## Segment the temporal stream + CLIP feature extraction
 
 You can recreate the temporal (uploading) stream of YFCC100M images for already downloaded images by [prepare_dataset.py](prepare_dataset.py). To use this script, you should supply with the same list of arguments from last step, plus three additional arguments:
@@ -128,8 +103,6 @@ This will produce a json file at **img_dir**/bucket_**name_of_json_file**.json, 
 ```
 /scratch/zhiqiu/yfcc100m_all_new_sep_21/images_minbyte_10_valid_uploaded_date_minedge_120_maxratio_2.0/bucket_clear_10_time.json
 ```
-
-<!-- If you need to move the downloaded files to another location before you start running any experiments, you can specify the (--new_folder_path) flag. The reason that you must use this script to transfer the folder is because you cannot simply copy the downloaded folders: The metadata objects contain absolute paths to the image files. Check out the comments in [prepare_dataset.py](prepare_dataset.py) for more details. -->
 
 # Visio-linguistic dataset curation with CLIP
 ## Prompt Engineering with CLIP
@@ -189,24 +162,19 @@ After you modify this [json file](clear_10_config.json) (or create your own), yo
 ```
   python prepare_concepts.py --concept_group_dict ./clear_10_config.json
 ```
-The retrieved images will then be saved under **SAVE_PATH/NAME/labeled_images**. Plus, caffe-style image filelist will be generated per bucket under **SAVE_PATH/NAME/filelists/**, and you may access the file names via bucket index with **SAVE_PATH/NAME/filelists.json**. When determining the class index, class names will be sorted via alphabetical order, stored per line in **SAVE_PATH/NAME/class_names.txt**. Metadata for labeled images will be saved under **SAVE_PATH/NAME/labeled_metadata/**, you may access the file names via bucket index and label name via **SAVE_PATH/NAME/labeled_metadata.json**. 
+The retrieved images will then be saved under **SAVE_PATH/NAME/labeled_images**. Metadata for labeled images will be saved under **SAVE_PATH/NAME/labeled_metadata/**, you may access the file names via bucket index and label name via **SAVE_PATH/NAME/labeled_metadata.json**. When determining the class index, class names will be sorted via alphabetical order, stored per line in **SAVE_PATH/NAME/class_names.txt**.
 
 Finally, if you want to save the raw images/metadata for all images, you can set **--save_all_images** or **--save_all_metadata** to be **True**. Then raw images/metadata for all images per bucket are saved under **SAVE_PATH/NAME/all_images/** and **SAVE_PATH/NAME/all_metadata/**, and metadata file names per bucket is saved in **SAVE_PATH/NAME/all_metadata.json**. 
 
-The resulting directory tree looks like:
+The resulting folder looks like:
 
 ```
 SAVE_PATH/NAME/
 |   concept_group_dict.json (a copy for reference)
 |   class_names.txt (line number for each class is the class index)
 |   clip_result.json (clip retrieved scores and metadata for all buckets)
-|   filelists.json (mapping bucket index to filelist path)
 |   labeled_metadata.json (mapping bucket index to labeled metadata path)
 |   all_metadata.json (mapping bucket index to all metadata path, optional)
-└───filelists (for caffe-style image list)
-│   │   0.txt
-|   |   1.txt
-|   |   ...
 └───labeled_images (for clip-retrieved images)
 |   └───0
 |   |   └───computer
@@ -237,9 +205,6 @@ SAVE_PATH/NAME/
 |   |   1.json
 |   |   ...
 ```
-
-<!-- ## CSV files preparation
-You can export the metadata to CSV files via prepare_csv.py. -->
 
 ## MoCo V2 pre-training on single bucket
 You can pre-train a MoCo V2 model via scripts under [moco/](moco/) folder. Specifically, after you download the images and segment them into buckets, you can specify a bucket from the stream to pre-train a MoCo V2 model. For more details about training MoCo and tuning hyperparameters, please refer to their [official repository](https://github.com/facebookresearch/moco). As an example, we can use the default MoCo V2 hyperparameter to pre-train a MoCo model using the 0th bucket from the previous step (you need to modify the **--data** flag to your local file location that saves the bucket of image metadata; and modify the **--model_folder** to where you want the MoCo V2 model to be saved):
@@ -297,6 +262,80 @@ SAVE_PATH/NAME/
 |   |   |   |   ...
 |   |   └───...
 ```
+
+# Prepare folders for Avalanche training
+Once we finish the above steps, you can run [prepare_training_folder.py](prepare_training_folder.py) to prepare the folder ready for Avalanche training. In particular, [Avalanche](https://avalanche.continualai.org) (an well-maintained end-to-end library for CL training and evaluation) supports reading in (1) caffe-style filelists or (2) pytorch tensor lists when creating benchmark objects. Therefore, [prepare_training_folder.py](prepare_training_folder.py) supports two functionalities:
+
+- Generate random train/test split based on given a random seed number and a split ratio.
+- Store filelists and tensor lists accordingly based on the split.
+
+Suppose the folder from last step is stored at **SAVE_PATH/NAME** (if you follow all above steps, it will be /data3/zhiqiul/clear_datasets/CLEAR10-TEST):
+```
+  python prepare_training_folder.py --folder_path /data3/zhiqiul/clear_datasets/CLEAR10-TEST --testset_ratio 0.3 --seed 0
+```
+These arguments include:
+- *--folder_path*:
+   - The folder generated by prepare_concepts.py (containing labeled_metadata.json, etc.). If features are also saved under this folder, they will also be used to generate training folders for Avalanche.
+- *--testset_ratio* (default = 0.0):
+   - If testset_ratio is 0.0, then all data will be used for training (resulting folder will be saved under a subfolder named "all", and seed will be ignored). Otherwise, the **testset_ratio** data will be used for testing, and the rest for training (resulting folder will be saved under "testset_ratio_{args.testset_ratio}/seed_{args.seed}").
+- *--seed* (default = 0):
+   - An integer random seed for generating the split, if **testset_ratio** is not 0.
+
+After running the above script, a new folder named **avalanche_folder** will be saved under **SAVE_PATH/NAME** as below:
+
+```
+SAVE_PATH/NAME
+|   ... (other files/folders generated by prepare_concepts.py)
+|   class_names.txt (line number for each class is the class index)
+|   labeled_metadata.json (mapping bucket index to labeled metadata path)
+└───labeled_metadata (same structure as above)
+└───features (suppose we have two feature types imagenet and moco_b0)
+|   └───imagenet (same structure as above)
+|   └───moco_b0 (same structure as above)
+└───avalanche_folder
+|   └───all (no train/test split)
+|   |   └───filelists
+|   |   |   └───0
+|   |   |   |   |   all.txt (caffe-style filelist)
+|   |   |   └───1
+|   |   |   └───...
+|   |   └───feature_tensors
+|   |   |   └───imagenet
+|   |   |   |   └───0
+|   |   |   |   |   |   all.pth (feature tensors, labels)
+|   |   |   |   └───1
+|   |   |   |   └───...
+|   |   |   └───moco_b0
+|   |   |   |   └───0
+|   |   |   |   |   |   all.pth (feature tensors, labels)
+|   |   |   |   └───1
+|   |   |   |   └───...
+|   └───testset_ratio_0.3
+|   |   └───seed_0
+|   |   |   └───filelists
+|   |   |   |   └───0
+|   |   |   |   |   |   all.txt (caffe-style filelist)
+|   |   |   |   |   |   train.txt (caffe-style filelist)
+|   |   |   |   |   |   test.txt (caffe-style filelist)
+|   |   |   |   └───1
+|   |   |   |   └───...
+|   |   |   └───feature_tensors
+|   |   |   |   └───imagenet
+|   |   |   |   |   └───0
+|   |   |   |   |   |   |   all.pth (feature tensors, labels)
+|   |   |   |   |   |   |   train.pth (feature tensors, labels)
+|   |   |   |   |   |   |   test.pth (feature tensors, labels)
+|   |   |   |   |   └───1
+|   |   |   |   |   └───...
+|   |   |   |   └───moco_b0
+|   |   |   |   |   └───0
+|   |   |   |   |   |   |   all.pth (feature tensors, labels)
+|   |   |   |   |   |   |   train.pth (feature tensors, labels)
+|   |   |   |   |   |   |   test.pth (feature tensors, labels)
+|   |   |   |   |   └───1
+|   |   |   |   |   └───...
+```
+
 
 # Citation
 If this work is useful for your research, please cite our paper:
