@@ -1,16 +1,8 @@
 from utils import load_json, save_as_json
 import argparse
-from tqdm import tqdm
 import random
 import torch
-import os
 from pathlib import Path
-import torchvision.transforms as transforms
-import torchvision.models as models
-from torchvision.datasets.folder import default_loader
-import shutil
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--folder_path",
@@ -26,7 +18,6 @@ argparser.add_argument("--testset_ratio",
 argparser.add_argument("--seed",
                        type=int, default=0,
                        help="Seed for random split.")
-
 
 if __name__ == '__main__':
     args = argparser.parse_args()
@@ -69,8 +60,6 @@ if __name__ == '__main__':
             features_dict = load_json(features_dict_path)
             features_to_transfer[feature_type] = features_dict
             
-    # state_dict_save_path = features_name_path / f'state_dict.pth.tar'
-    
     training_folder_path_filelist = training_folder_path / f'filelists'
     training_folder_path_filelist.mkdir(exist_ok=True)
     training_folder_path_features = training_folder_path / f'features'

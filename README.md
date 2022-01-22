@@ -293,6 +293,7 @@ SAVE_PATH/NAME
 |   └───imagenet (same structure as above)
 |   └───moco_b0 (same structure as above)
 └───training_folder
+|   bucket_indices.json (a list of bucket indices)
 |   └───all (no train/test split)
 |   |   └───filelists
 |   |   |   └───0
