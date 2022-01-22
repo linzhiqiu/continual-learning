@@ -281,7 +281,7 @@ These arguments include:
 - *--seed* (default = 0):
    - An integer random seed for generating the split, if **testset_ratio** is not 0.
 
-After running the above script, a new folder named **avalanche_folder** will be saved under **SAVE_PATH/NAME** as below:
+After running the above script, a new folder named **training_folder** will be saved under **SAVE_PATH/NAME** as below:
 
 ```
 SAVE_PATH/NAME
@@ -292,14 +292,14 @@ SAVE_PATH/NAME
 └───features (suppose we have two feature types imagenet and moco_b0)
 |   └───imagenet (same structure as above)
 |   └───moco_b0 (same structure as above)
-└───avalanche_folder
+└───training_folder
 |   └───all (no train/test split)
 |   |   └───filelists
 |   |   |   └───0
 |   |   |   |   |   all.txt (caffe-style filelist)
 |   |   |   └───1
 |   |   |   └───...
-|   |   └───feature_tensors
+|   |   └───features
 |   |   |   └───imagenet
 |   |   |   |   └───0
 |   |   |   |   |   |   all.pth (feature tensors, labels)
@@ -319,7 +319,7 @@ SAVE_PATH/NAME
 |   |   |   |   |   |   test.txt (caffe-style filelist)
 |   |   |   |   └───1
 |   |   |   |   └───...
-|   |   |   └───feature_tensors
+|   |   |   └───features
 |   |   |   |   └───imagenet
 |   |   |   |   |   └───0
 |   |   |   |   |   |   |   all.pth (feature tensors, labels)

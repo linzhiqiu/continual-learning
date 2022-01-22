@@ -110,7 +110,7 @@ if __name__ == '__main__':
         
         for label in labeled_metadata[b_idx]:
             features_path_i_label = features_path_i / (label + ".pth")
-            features_dict[b_idx][label] = str(Path("features") / b_idx / (label + ".pth"))
+            features_dict[b_idx][label] = str(Path(args.name) / b_idx / (label + ".pth"))
             paths_i_label = [] # list of 2 element tuple. first element is image path, second element is ID
 
             labeled_metadata_path_i_label = labeled_metadata[b_idx][label]

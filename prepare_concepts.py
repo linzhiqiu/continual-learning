@@ -195,8 +195,6 @@ if __name__ == '__main__':
     
     class_names_path = save_path / 'class_names.txt'
     clip_result_save_path = save_path / 'clip_result.json'
-    filelists_json_path = save_path / 'filelists.json'
-    filelists_path = save_path / 'filelists'
     labeled_images_path = save_path / 'labeled_images'
     labeled_metadata_json_path = save_path / 'labeled_metadata.json'
     labeled_metadata_path = save_path / 'labeled_metadata'
@@ -299,13 +297,10 @@ if __name__ == '__main__':
     
     # prepare misc. folders if not exist already
     if not labeled_metadata_path.exists() or \
-       not labeled_images_path.exists() or \
-       not filelists_path.exists():
+       not labeled_images_path.exists():
         labeled_metadata_path.mkdir(exist_ok=True)
         labeled_images_path.mkdir(exist_ok=True)
-        filelists_path.mkdir(exist_ok=True)
     
-    filelists_dict = {}
     labeled_metadata_dict = {}
     
     for b_idx in bucket_indices:
@@ -316,11 +311,7 @@ if __name__ == '__main__':
         labeled_images_path_i = labeled_images_path / b_idx
         labeled_images_path_i.mkdir(exist_ok=True)
         
-        filelists_path_i = filelists_path / (b_idx + ".txt")
-        filelists_dict[b_idx] = str(Path('filelists') / (b_idx + ".txt"))
-        filelist_strs_list_i = []
         for label in clip_result[b_idx]:
-            label_index = sorted_prompts.index(label)
             labeled_images_path_i_label = labeled_images_path_i / label
             labeled_images_path_i_label.mkdir(exist_ok=True)
 
@@ -337,14 +328,9 @@ if __name__ == '__main__':
                 meta['IMG_DIR'] = str(save_path)
                 meta['IMG_PATH'] = str(Path("labeled_images") / b_idx / label / img_name)
                 labeled_metadata_i_label[ID] = meta
-                filelist_strs_list_i.append(f"{meta['IMG_PATH']} {label_index}")
 
             save_as_json(labeled_metadata_path_i_label, labeled_metadata_i_label)
-        filelist_str = "\n".join(filelist_strs_list_i)
-        with open(filelists_path_i, "w+") as f:
-            f.write(filelist_str)
-            
-    save_as_json(filelists_json_path, filelists_dict)
+    
     save_as_json(labeled_metadata_json_path, labeled_metadata_dict)
     
     if args.save_all_images and not args.save_all_metadata:
