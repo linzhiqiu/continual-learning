@@ -68,7 +68,11 @@ if __name__ == '__main__':
         training_folder_path_feature_type = training_folder_path_features / feature_type
         training_folder_path_feature_type.mkdir(exist_ok=True)
 
-    bucket_indices_path = training_folder_path / f'bucket_indices.json'
+    bucket_indices_path = training_folder_path / 'bucket_indices.json'
+    if bucket_indices_path.exists():
+        bucket_indices_path.unlink()
+    
+    bucket_indices_path = folder_path / 'training_folder' / 'bucket_indices.json'
     save_as_json(bucket_indices_path, bucket_indices)
 
     for b_idx in bucket_indices:
@@ -81,13 +85,16 @@ if __name__ == '__main__':
 
             labeled_metadata_path_i_label = labeled_metadata[b_idx][label]
             labeled_metadata_i_label = load_json(folder_path / labeled_metadata_path_i_label)
-            feature_tensor_label = torch.load(folder_path / features_to_transfer[feature_type][b_idx][label])
+            
+            feature_tensor_label = {}
+            for feature_type in features_to_transfer:
+                feature_tensor_label[feature_type] = torch.load(folder_path / features_to_transfer[feature_type][b_idx][label])
+            
             for ID in labeled_metadata_i_label:
                 all_images_b_idx.append((class_index, labeled_metadata_i_label[ID]['IMG_PATH']))
                 for feature_type in features_to_transfer:
-                    feature_tensor = feature_tensor_label[ID]
+                    feature_tensor = feature_tensor_label[feature_type][ID]
                     all_features_b_idx[feature_type].append((class_index, feature_tensor))
-
         
         all_filelist_strs = []
         for class_index, path in all_images_b_idx:
