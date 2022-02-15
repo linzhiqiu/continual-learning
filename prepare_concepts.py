@@ -342,8 +342,10 @@ if __name__ == '__main__':
     
     save_as_json(labeled_metadata_json_path, labeled_metadata_dict)
     
-    if args.save_all_images and not args.save_all_metadata:
-        raise ValueError("Save all images but without saving metadata?")
+    if args.save_all_images:
+        if not args.save_all_metadata:
+            raise ValueError("Must save metadata before saving images..")
+        all_images_path.mkdir(exist_ok=True)
     
     if args.save_all_metadata:
         all_metadata_dict = {}
