@@ -18,6 +18,9 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument("--concept_group_dict",
                        default="./clear_10_config.json", type=str,
                        help="You can specify the various configs for data collection (in json format)")
+argparser.add_argument("--label_map_dict",
+                       default=None, type=str,
+                       help="If the prompts are too long (like containing space and comma), you can provide a dictionary mapping the prompt to a shorter label name")
 argparser.add_argument("--save_all_images",
                        default=False, type=bool,
                        help="Image files for all images will be saved under 'SAVE_PATH/NAME/all_images/'")
@@ -31,12 +34,6 @@ def get_save_path(concept_group_dict):
     save_path = Path(concept_group_dict['SAVE_PATH']) / dataset_name
     return save_path
     
-def get_concept_group_dict_path(concept_group_dict):
-    """Copy concept_group_dict to this path
-    """
-    save_path = get_save_path(concept_group_dict)
-    return save_path / "concept_group_dict.json"
-
 def retrieve_examples(prompts, # a dictionary of key (label) and value (prompt)
                       retrieval_func,
                       clip_features_normalized_paths,
@@ -215,7 +212,7 @@ if __name__ == '__main__':
 
     # prepare main folder if not exist already, and check whether 
     # concept_group_dict (if saved already) is aligned with current options
-    concept_group_dict_path = get_concept_group_dict_path(cg)
+    concept_group_dict_path = save_path / "concept_group_dict.json"
     if save_path.exists() and concept_group_dict_path.exists():
         concept_group_dict_saved = load_json(concept_group_dict_path)
         if concept_group_dict_saved != cg:
@@ -226,7 +223,17 @@ if __name__ == '__main__':
         save_as_json(concept_group_dict_path, cg)
 
     # Write class names in sorted order to class_names_path
-    sorted_prompts = [prompts[k] for k in prompts]
+    if args.label_map_dict and Path(args.label_map_dict).exists():
+        print("Use a label_map_dict to shorten label names")
+        label_map_dict = load_json(Path(args.label_map_dict))
+        saved_label_map_dict_path = save_path / "label_map_dict.json"
+        save_as_json(saved_label_map_dict_path, label_map_dict)
+        sorted_prompts = [label_map_dict[k] for k in prompts]
+    else:
+        print("No label_map_dict is given.")
+        label_map_dict = None
+        sorted_prompts = [prompts[k] for k in prompts]
+
     if cg['BACKGROUND']:
         sorted_prompts += ['BACKGROUND']
     sorted_prompts = sorted(sorted_prompts)
@@ -312,6 +319,8 @@ if __name__ == '__main__':
         labeled_images_path_i.mkdir(exist_ok=True)
         
         for label in clip_result[b_idx]:
+            if label_map_dict:
+                label = label_map_dict[label]
             labeled_images_path_i_label = labeled_images_path_i / label
             labeled_images_path_i_label.mkdir(exist_ok=True)
 

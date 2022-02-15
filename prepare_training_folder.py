@@ -68,10 +68,6 @@ if __name__ == '__main__':
         training_folder_path_feature_type = training_folder_path_features / feature_type
         training_folder_path_feature_type.mkdir(exist_ok=True)
 
-    bucket_indices_path = training_folder_path / 'bucket_indices.json'
-    if bucket_indices_path.exists():
-        bucket_indices_path.unlink()
-    
     bucket_indices_path = folder_path / 'training_folder' / 'bucket_indices.json'
     save_as_json(bucket_indices_path, bucket_indices)
 
@@ -103,7 +99,7 @@ if __name__ == '__main__':
         all_feature_tensors_dict = {}
         for feature_type in all_features_b_idx:
             all_feature_tensors_of_type = torch.cat(
-                                              [tensor
+                                              [tensor.unsqueeze(0)
                                                for _, tensor in all_features_b_idx[feature_type]]
                                           )
             all_class_index = [class_index for class_index, _ in all_features_b_idx[feature_type]]

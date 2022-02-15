@@ -162,6 +162,8 @@ After you modify this [json file](clear_10_config.json) (or create your own), yo
 ```
   python prepare_concepts.py --concept_group_dict ./clear_10_config.json
 ```
+Optionally, if the prompts you designed are too long, you can provide short names for them in a dictionary (key is prompt, value is the short name string) in json file via the optional **--label_map_dict** parameter.
+
 The retrieved images will then be saved under **SAVE_PATH/NAME/labeled_images**. Metadata for labeled images will be saved under **SAVE_PATH/NAME/labeled_metadata/**, you may access the file names via bucket index and label name via **SAVE_PATH/NAME/labeled_metadata.json**. When determining the class index, class names will be sorted via alphabetical order, stored per line in **SAVE_PATH/NAME/class_names.txt**.
 
 Finally, if you want to save the raw images/metadata for all images, you can set **--save_all_images** or **--save_all_metadata** to be **True**. Then raw images/metadata for all images per bucket are saved under **SAVE_PATH/NAME/all_images/** and **SAVE_PATH/NAME/all_metadata/**, and metadata file names per bucket is saved in **SAVE_PATH/NAME/all_metadata.json**. 
