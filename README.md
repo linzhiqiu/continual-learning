@@ -166,7 +166,7 @@ Optionally, if the prompts you designed are too long, you can provide short name
 
 The retrieved images will then be saved under **SAVE_PATH/NAME/labeled_images**. Metadata for labeled images will be saved under **SAVE_PATH/NAME/labeled_metadata/**, you may access the file names via bucket index and label name via **SAVE_PATH/NAME/labeled_metadata.json**. When determining the class index, class names will be sorted via alphabetical order, stored per line in **SAVE_PATH/NAME/class_names.txt**.
 
-Finally, if you want to save the raw images/metadata for all images, you can set **--save_all_images** or **--save_all_metadata** to be **True**. Then raw images/metadata for all images per bucket are saved under **SAVE_PATH/NAME/all_images/** and **SAVE_PATH/NAME/all_metadata/**, and metadata file names per bucket is saved in **SAVE_PATH/NAME/all_metadata.json**. 
+Finally, if you want to save the raw images/metadata for all images, you can set **--save_all_images** or **--save_all_metadata** to be **True**. Then raw images/metadata for all images per bucket are saved under **SAVE_PATH/NAME/all_images/** and **SAVE_PATH/NAME/all_metadata/**, and metadata file names per bucket is saved in **SAVE_PATH/NAME/all_metadata.json**. For storage concerns, we recommand you to set **--save_all_metadata** to **True** and **--save_all_images** to **False**; if you want to download all images, you can always run [download_all_images.py](download_all_images.py) later.
 
 The resulting folder looks like:
 

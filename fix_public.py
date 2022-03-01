@@ -17,7 +17,7 @@ argparser.add_argument("--bucket_dict_path",
                        default='/scratch/zhiqiu/yfcc100m_all/images_minbyte_10_valid_uploaded_date_feb_18/bucket_11.json',
                        help="The folder with the images and query_dict.pickle")
 argparser.add_argument("--new_folder_path",
-                       default='/data3/zhiqiul/clear_datasets/CLEAR-10-PUBLIC',
+                       default='/data3/zhiqiul/CLEAR-10-PUBLIC',
                        help="Where the public folder will reside")
 def get_save_path(concept_group_dict):
     dataset_name = concept_group_dict['NAME']
@@ -41,7 +41,8 @@ if __name__ == '__main__':
     bucket_indices = sorted(list(bucket_dict.keys()), key=lambda idx: int(idx))
     '''A sorted list of bucket indices
     '''
-    bucket_indices = bucket_indices[1:]
+    # bucket_indices = bucket_indices[1:]
+    # bucket_indices = bucket_indices[0:1]
     folder_paths = [bucket_dict[bucket_idx]['folder_path'] for bucket_idx in bucket_indices]
     save_path = Path(args.new_folder_path)
     
@@ -57,6 +58,7 @@ if __name__ == '__main__':
     
     # optional
     all_images_path = save_path / 'all_images'
+    all_images_path.mkdir(exist_ok=True)
     all_metadata_path = save_path / 'all_metadata'
     all_metadata_json_path = save_path / 'all_metadata.json'
     
@@ -69,33 +71,23 @@ if __name__ == '__main__':
     sorted_prompts = sorted(sorted_prompts)
     
     
-    
-    old_labeled_metadata_dict = load_json(labeled_metadata_json_path)
-    for b_idx in bucket_indices:
-        print(f"Checking on {b_idx}")
-        labeled_metadata_path_i = labeled_metadata_path / b_idx
-        assert labeled_metadata_path_i.exists()
+    # old_labeled_metadata_dict = load_json(labeled_metadata_json_path)
+    # for b_idx in bucket_indices:
+    #     print(f"Checking on {b_idx}")
+    #     labeled_metadata_path_i = labeled_metadata_path / b_idx
+    #     assert labeled_metadata_path_i.exists()
 
-        labeled_images_path_i = labeled_images_path / b_idx
-        assert labeled_images_path_i.exists()
+    #     labeled_images_path_i = labeled_images_path / b_idx
+    #     assert labeled_images_path_i.exists()
         
-        for label in sorted_prompts:
-            labeled_images_path_i_label = labeled_images_path_i / label
-            if not labeled_images_path_i_label.exists():
-                import pdb; pdb.set_trace()
+    #     for label in sorted_prompts:
+    #         labeled_images_path_i_label = labeled_images_path_i / label
+    #         if not labeled_images_path_i_label.exists():
+    #             import pdb; pdb.set_trace()
 
-            labeled_metadata_path_i_label = labeled_metadata_path_i / (label + ".json")
-            old_labeled_metadata_i_label = load_json(labeled_metadata_path_i_label)
-            assert old_labeled_metadata_dict[b_idx][label] == str(Path('labeled_metadata') / b_idx / (label + ".json"))
-            # for meta in clip_result[b_idx][label]['metadata']:
-            #     ID = meta['ID']
-            #     EXT = meta['EXT']
-            #     img_name = f"{ID}.{EXT}"
-            #     assert meta['IMG_DIR'] == str(save_path)
-            #     assert meta['IMG_PATH'] == str(Path("labeled_images") / b_idx / label / img_name)
-            #     assert old_labeled_metadata_i_label[ID] == meta
-                # meta['IMG_PATH'] = str(Path("labeled_images") / b_idx / label / img_name)
-                # labeled_metadata_i_label[ID] = meta
+    #         labeled_metadata_path_i_label = labeled_metadata_path_i / (label + ".json")
+    #         old_labeled_metadata_i_label = load_json(labeled_metadata_path_i_label)
+    #         assert old_labeled_metadata_dict[b_idx][label] == str(Path('labeled_metadata') / b_idx / (label + ".json"))
 
 
     all_metadata_dict = {}
@@ -105,19 +97,19 @@ if __name__ == '__main__':
         all_metadata_path_i = all_metadata_path / (b_idx + ".json")
         all_metadata_dict[b_idx] = str(Path('all_metadata') / (b_idx + ".json"))
         all_metadata_i = {} # key is flickr ID, value is metadata dict
-
-        
+        all_images_path_i = all_images_path / b_idx
+        all_images_path_i.mkdir(exist_ok=True)
         for meta in bucket_dict[b_idx]['all_metadata']:
-            # original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
-            # transfer_path = all_images_path_i / img_name
+            original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
             ID = meta['ID']
             EXT = meta['EXT']
             img_name = f"{ID}.{EXT}"
             meta['IMG_DIR'] = str(save_path)
             meta['IMG_PATH'] = str(Path("all_images") / b_idx / img_name)
             all_metadata_i[ID] = meta
+            transfer_path = save_path / meta['IMG_PATH']
             # if args.save_all_images:
-            #     shutil.copy(original_path, transfer_path)
+            shutil.copy(original_path, transfer_path)
             # # original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
             # # if args.save_all_images:
             # #     transfer_path = all_images_path_i / img_name
@@ -129,7 +121,7 @@ if __name__ == '__main__':
             # meta['IMG_PATH'] = str(Path("all_images") / b_idx / img_name)
             # all_metadata_i[ID] = meta
 
-        save_as_json(all_metadata_path_i, all_metadata_i)
-    save_as_json(all_metadata_json_path, all_metadata_dict)
+    #     save_as_json(all_metadata_path_i, all_metadata_i)
+    # save_as_json(all_metadata_json_path, all_metadata_dict)
     
     

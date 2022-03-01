@@ -251,14 +251,21 @@ if __name__ == '__main__':
         clip_result = load_json(clip_result_save_path)
     else:
         print(f"Collecting images for {cg['NAME']} then save to {clip_result_save_path}..")
-        
         k_nearest_func = prepare_dataset.get_knearest_models_func(
                              bucket_dict,
                              cg['CLIP_MODEL'],
                              device=device
                          )
 
+        clip_result_temp_save_path = save_path / 'clip_result' # TODO
+        if not clip_result_temp_save_path.exists():
+            clip_result_temp_save_path.mkdir()
         for b_idx, folder_path in zip(bucket_indices, folder_paths):
+            clip_result_temp_save_path_i = clip_result_temp_save_path / f"{b_idx}.json"
+            if clip_result_temp_save_path_i.exists():
+                clip_result[b_idx] = load_json(clip_result_temp_save_path_i)
+                continue
+            
             clip_features_normalized_paths = prepare_dataset.get_clip_features_normalized_paths(
                                                 folder_path,
                                                 cg['CLIP_MODEL']
@@ -297,6 +304,8 @@ if __name__ == '__main__':
                 )
             else:
                 clip_result[b_idx] = positive_clip_result_b_idx
+            
+            save_as_json(clip_result_temp_save_path_i, clip_result[b_idx])
 
         save_as_json(clip_result_save_path, clip_result)
         print(f"Save at {clip_result_save_path}")

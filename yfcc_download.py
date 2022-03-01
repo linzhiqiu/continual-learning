@@ -4,21 +4,15 @@
 
 from io import BytesIO
 import os
-import re
 from urllib.parse import unquote_plus
 import time
-import logging
 import argparse
 import time
 from PIL import Image
-import subprocess
 import requests
 from tqdm import tqdm
 from datetime import datetime
 from dateutil import parser
-import shutil
-import random
-import imagesize
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import save_as_json, load_json
 import threading
