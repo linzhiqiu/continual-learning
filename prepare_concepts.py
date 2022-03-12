@@ -329,12 +329,14 @@ if __name__ == '__main__':
         
         for label in clip_result[b_idx]:
             if label_map_dict:
-                label = label_map_dict[label]
-            labeled_images_path_i_label = labeled_images_path_i / label
+                mapped_label = label_map_dict[label]
+            else:
+                mapped_label = label
+            labeled_images_path_i_label = labeled_images_path_i / mapped_label
             labeled_images_path_i_label.mkdir(exist_ok=True)
 
-            labeled_metadata_path_i_label = labeled_metadata_path_i / (label + ".json")
-            labeled_metadata_dict[b_idx][label] = str(Path('labeled_metadata') / b_idx / (label + ".json"))
+            labeled_metadata_path_i_label = labeled_metadata_path_i / (mapped_label + ".json")
+            labeled_metadata_dict[b_idx][mapped_label] = str(Path('labeled_metadata') / b_idx / (mapped_label + ".json"))
             labeled_metadata_i_label = {} # key is flickr ID (str), value is metadata dict for this image
             for meta in clip_result[b_idx][label]['metadata']:
                 original_path = Path(meta['IMG_DIR']) / meta['IMG_PATH']
@@ -344,7 +346,7 @@ if __name__ == '__main__':
                 transfer_path = labeled_images_path_i_label / img_name
                 shutil.copy(original_path, transfer_path)
                 meta['IMG_DIR'] = str(save_path)
-                meta['IMG_PATH'] = str(Path("labeled_images") / b_idx / label / img_name)
+                meta['IMG_PATH'] = str(Path("labeled_images") / b_idx / mapped_label / img_name)
                 labeled_metadata_i_label[ID] = meta
 
             save_as_json(labeled_metadata_path_i_label, labeled_metadata_i_label)
