@@ -4,6 +4,9 @@ import random
 import torch
 from pathlib import Path
 
+# SEED_LIST = [] # If not empty, then will generate multiple split based on this random split
+SEED_LIST = [0, 1, 2, 3, 4]
+
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--folder_path",
                        default='/data3/zhiqiul/clear_datasets/CLEAR10-TEST',
@@ -15,9 +18,6 @@ argparser.add_argument("--testset_ratio",
                             "and seed will be ignored). Otherwise, args.testset_ratio data " \
                             "will be used for testing, and the rest for training (resulting " \
                             "folder will be saved under 'testset_ratio_{args.testset_ratio}/seed_{args.seed}').")
-argparser.add_argument("--seed",
-                       type=int, default=0,
-                       help="Seed for random split.")
 
 if __name__ == '__main__':
     args = argparser.parse_args()
@@ -25,19 +25,7 @@ if __name__ == '__main__':
     folder_path = Path(args.folder_path)
     assert folder_path.exists(), f"{folder_path} does not exist"
 
-    perform_random_split = False
-    if args.testset_ratio == 0.:
-        print("No train/test split")
-        split_name = 'all'
-        training_folder_path = folder_path / 'training_folder' / split_name
-    elif args.testset_ratio < 1.0:
-        print("Make a train/test split")
-        perform_random_split = True
-        split_name = f'testset_ratio_{args.testset_ratio}'
-        seed_name = f"seed_{args.seed}"
-        random.seed(args.seed)
-        training_folder_path = folder_path / 'training_folder' / split_name / seed_name
-    
+    training_folder_path = folder_path / 'training_folder' 
     training_folder_path.mkdir(exist_ok=True, parents=True)
 
     class_names_path = folder_path / 'class_names.txt'
@@ -52,27 +40,27 @@ if __name__ == '__main__':
     bucket_indices = sorted(list(labeled_metadata.keys()), key = lambda x : int(x))
 
     features_path = folder_path / 'features'
-    features_to_transfer = {} # key is feature type (str), value is 
+    features_to_transfer = {} # key is feature type (str), value is a dictionary of feature paths
     if features_path.exists():
         for features_subpath in features_path.glob("*/"):
             feature_type = features_subpath.name
             features_dict_path = features_subpath / 'features.json'
             features_dict = load_json(features_dict_path)
             features_to_transfer[feature_type] = features_dict
-            
+    
     training_folder_path_filelist = training_folder_path / f'filelists'
     training_folder_path_filelist.mkdir(exist_ok=True)
     training_folder_path_features = training_folder_path / f'features'
     training_folder_path_features.mkdir(exist_ok=True)
     for feature_type in features_to_transfer:
-        training_folder_path_feature_type = training_folder_path_features / feature_type
+        training_folder_path_feature_type = training_folder_path / f'features' / feature_type
         training_folder_path_feature_type.mkdir(exist_ok=True)
 
     bucket_indices_path = folder_path / 'training_folder' / 'bucket_indices.json'
     save_as_json(bucket_indices_path, bucket_indices)
 
     for b_idx in bucket_indices:
-        print(f"Working on {b_idx}")
+        print(f"Working on bucket {b_idx}")
         all_images_b_idx = [] # each element is a tuple of (class_index, img_path)
         all_features_b_idx = {feature_type : [] for feature_type in features_to_transfer} # key is feature_type, value is a list of tuples of (class_index, feature_tensor)
         
@@ -92,10 +80,20 @@ if __name__ == '__main__':
                     feature_tensor = feature_tensor_label[feature_type][ID]
                     all_features_b_idx[feature_type].append((class_index, feature_tensor))
         
+        # Writing filelist to txt file
         all_filelist_strs = []
         for class_index, path in all_images_b_idx:
             all_filelist_strs.append(f"{path} {class_index}")
 
+        filelist_str = "\n".join(all_filelist_strs)
+        filelist_folder = training_folder_path / f'filelists' / b_idx
+        filelist_folder.mkdir(exist_ok=True)
+        
+        filelist_all_path = training_folder_path / f'filelists' / b_idx / "all.txt"
+        with open(filelist_all_path, "w+") as f:
+            f.write(filelist_str)
+        
+        # Save avalanche tensor list to all.pth
         all_feature_tensors_dict = {}
         for feature_type in all_features_b_idx:
             all_feature_tensors_of_type = torch.cat(
@@ -105,58 +103,59 @@ if __name__ == '__main__':
             all_class_index = [class_index for class_index, _ in all_features_b_idx[feature_type]]
             all_feature_tensors_dict[feature_type] = (all_feature_tensors_of_type, all_class_index)
 
-        filelist_str = "\n".join(all_filelist_strs)
-        training_folder_path_filelist_b_idx = training_folder_path_filelist / b_idx
-        training_folder_path_filelist_b_idx.mkdir(exist_ok=True)
-        
-        training_folder_path_filelist_b_idx_all_path = training_folder_path_filelist_b_idx / "all.txt"
-        with open(training_folder_path_filelist_b_idx_all_path, "w+") as f:
-            f.write(filelist_str)
-
         for feature_type in all_feature_tensors_dict:
-            training_folder_path_feature_type_b_idx = training_folder_path_features / feature_type / b_idx
-            training_folder_path_feature_type_b_idx.mkdir(exist_ok=True)
-            training_folder_path_feature_type_b_idx_all_path = training_folder_path_feature_type_b_idx / "all.pth"
-            torch.save(all_feature_tensors_dict[feature_type], training_folder_path_feature_type_b_idx_all_path)
+            feature_folder = training_folder_path / f'features' / feature_type / b_idx
+            feature_folder.mkdir(exist_ok=True)
+            feature_all_path = training_folder_path / f'features' / feature_type / b_idx / "all.pth"
+            if not feature_all_path.exists():
+                torch.save(all_feature_tensors_dict[feature_type], feature_all_path)
+                print(f"Save {feature_type} features to {feature_all_path}")
+            else:
+                print(f"{feature_all_path} already exists.")
 
-        if perform_random_split:
-            num_images = len(all_images_b_idx)
-            num_test_images = int(num_images * args.testset_ratio)
-            num_train_images = num_images - num_test_images
-            
-            shuffled_indices = list(range(num_images))
-            random.shuffle(shuffled_indices)
-            train_indices = shuffled_indices[:num_train_images]
-            test_indices = shuffled_indices[num_train_images:]
-
-            train_filelist_strs = [all_filelist_strs[i] for i in train_indices]
-            filelist_str_train = "\n".join(train_filelist_strs)
-            training_folder_path_filelist_b_idx_train_path = training_folder_path_filelist_b_idx / "train.txt"
-            with open(training_folder_path_filelist_b_idx_train_path, "w+") as f:
-                f.write(filelist_str_train)
-
-            test_filelist_strs = [all_filelist_strs[i] for i in test_indices]
-            filelist_str_test = "\n".join(test_filelist_strs)
-            training_folder_path_filelist_b_idx_test_path = training_folder_path_filelist_b_idx / "test.txt"
-            with open(training_folder_path_filelist_b_idx_test_path, "w+") as f:
-                f.write(filelist_str_test)
-
-            for feature_type in all_feature_tensors_dict:
-                all_tensors, all_classes = all_feature_tensors_dict[feature_type]
+        if len(SEED_LIST) > 0 and args.testset_ratio != 0.0:
+            for seed in SEED_LIST:
+                split_name = f'testset_ratio_{args.testset_ratio}'
+                seed_name = f"split_{seed}"
+                split_folder_path = folder_path / 'training_folder' / split_name / seed_name / b_idx
+                split_folder_path.mkdir(exist_ok=True, parents=True)
                 
-                training_folder_path_feature_type_b_idx = training_folder_path_features / feature_type / b_idx
+                num_images = len(all_images_b_idx)
+                num_test_images = int(num_images * args.testset_ratio)
+                num_train_images = num_images - num_test_images
                 
-                training_folder_path_feature_type_b_idx_train_path = training_folder_path_feature_type_b_idx / "train.pth"
-                train_indices_tensor = torch.LongTensor(train_indices)
-                train_tensors = torch.index_select(all_tensors, 0, train_indices_tensor)
-                train_classes = [all_classes[i] for i in train_indices]
-                torch.save((train_tensors, train_classes),  training_folder_path_feature_type_b_idx_train_path)
+                shuffled_indices = list(range(num_images))
+                random.seed(seed)
+                random.shuffle(shuffled_indices)
+                train_indices = shuffled_indices[:num_train_images]
+                test_indices = shuffled_indices[num_train_images:]
 
-                training_folder_path_feature_type_b_idx_test_path = training_folder_path_feature_type_b_idx / "test.pth"
-                test_indices_tensor = torch.LongTensor(test_indices)
-                test_tensors = torch.index_select(all_tensors, 0, test_indices_tensor)
-                test_classes = [all_classes[i] for i in test_indices]
-                torch.save((test_tensors, test_classes),  training_folder_path_feature_type_b_idx_test_path)
+                train_filelist_strs = [all_filelist_strs[i] for i in train_indices]
+                filelist_str_train = "\n".join(train_filelist_strs)
+                filelist_train_path = split_folder_path / "train.txt"
+                with open(filelist_train_path, "w+") as f:
+                    f.write(filelist_str_train)
+
+                test_filelist_strs = [all_filelist_strs[i] for i in test_indices]
+                filelist_str_test = "\n".join(test_filelist_strs)
+                filelist_test_path = split_folder_path / "test.txt"
+                with open(filelist_test_path, "w+") as f:
+                    f.write(filelist_str_test)
+
+                    
+                feature_train_path = split_folder_path / "train_indices.json"
+                # train_indices_tensor = torch.LongTensor(train_indices)
+                # train_tensors = torch.index_select(all_tensors, 0, train_indices_tensor)
+                # train_classes = [all_classes[i] for i in train_indices]
+                # torch.save((train_tensors, train_classes),  feature_train_path)
+                save_as_json(feature_train_path, train_indices)
                 
-                
+                feature_test_path = split_folder_path / "test_indices.json"
+                # test_indices_tensor = torch.LongTensor(test_indices)
+                # test_tensors = torch.index_select(all_tensors, 0, test_indices_tensor)
+                # test_classes = [all_classes[i] for i in test_indices]
+                # torch.save((test_tensors, test_classes),  feature_test_path)
+                save_as_json(feature_test_path, test_indices)
+                    
+                    
 
